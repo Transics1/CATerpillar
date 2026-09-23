@@ -20,7 +20,6 @@ app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
 )
 
-# Missing models leave the service unhealthy; Node falls back rather than serving wrong numbers.
 try:
     META = joblib.load(os.path.join(MODEL_DIR, "meta.joblib"))
     MODELS = {q: joblib.load(os.path.join(MODEL_DIR, f"{q}.joblib")) for q in ("p10", "p50", "p90")}
