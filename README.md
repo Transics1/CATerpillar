@@ -52,14 +52,14 @@ Every number below comes from the running system, not an estimate.
 |---|---|
 | Task-time estimator MAE | **6.15 min** (MAPE 8.7%) |
 | vs. the planner's own estimate in the dataset | **62.3% more accurate** |
-| Prediction interval coverage | **79.0%** against an 80% target |
+| Prediction interval coverage | **78.7%** against an 80% target |
 | Anomaly model | Isolation Forest, flags 8.0% of windows |
 | Operator scoring validity | Beginner 82.5 → Intermediate 89.8 → Expert 93.0 |
 | Dataset | 91,800 telemetry rows · 2,321 tasks · 25 operators · 15 machines · 60 days |
 
-### On that 79%
+### On that 78.7%
 
-Raw quantile regression covered only 60.6% of held-out tasks inside its own "P10–P90" band — a
+Raw quantile regression covered only 61.3% of held-out tasks inside its own "P10–P90" band — a
 confidence interval that was wrong a third of the time while claiming otherwise. We added
 conformal calibration: hold out a split, measure how far outside the band those points fell,
 widen by that amount. The interval now means what it says.
@@ -196,8 +196,8 @@ demo:
 - The anomaly threshold we chose from first principles fired on **47% of all windows**. A rule
   that always fires makes the coaching signal meaningless. Now tuned against the real
   distributions — every rule fires on 0.4–16%.
-- The confidence interval covered **61%** of outcomes while advertising 80%. Fixed with conformal
-  calibration.
+- The confidence interval covered **61.3%** of outcomes while advertising 80%. Fixed with
+  conformal calibration.
 - The pace tracker read **"33 minutes ahead" permanently**, because the cycle target came from
   bucket volume while the estimate came from the model, and the two disagreed by 40%. A pace
   tracker that always says the same thing is worse than none.
