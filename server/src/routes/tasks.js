@@ -50,22 +50,33 @@ async function ensureTodaysTasks(operatorId) {
  */
 function orderTasks(tasks) {
   const periodRank = { morning: 0, afternoon: 1, night: 2 }
-  return [...tasks]
-    .sort((a, b) => {
-      const p = (periodRank[a.shiftPeriod] ?? 1) - (periodRank[b.shiftPeriod] ?? 1)
-      if (p !== 0) return p
-      return (b.prediction?.p50 ?? 0) - (a.prediction?.p50 ?? 0)
-    })
-    .map((t, i) => ({
-      ...t,
-      order: i + 1,
-      whyOrdered:
-        i === 0
-          ? 'Longest job first, while you are freshest'
-          : t.shiftPeriod === 'afternoon'
-            ? 'Scheduled for the afternoon block'
-            : 'Fits the morning window'
-    }))
+  const sorted = [...tasks].sort((a, b) => {
+    const p = (periodRank[a.shiftPeriod] ?? 1) - (periodRank[b.shiftPeriod] ?? 1)
+    if (p !== 0) return p
+    return (b.prediction?.p50 ?? 0) - (a.prediction?.p50 ?? 0)
+  })
+
+  // Labels are derived from the actual comparison rather than from position. Sorting is
+  // period-first, so "longest job first" was false whenever an afternoon task ran longer than
+  // every morning one - the operator would see the claim contradicted by the numbers below it.
+  const longestInPeriod = {}
+  for (const t of sorted) {
+    const cur = longestInPeriod[t.shiftPeriod]
+    if (!cur || (t.prediction?.p50 ?? 0) > (cur.prediction?.p50 ?? 0)) longestInPeriod[t.shiftPeriod] = t
+  }
+
+  return sorted.map((t, i) => {
+    const isLongest = longestInPeriod[t.shiftPeriod]?.taskId === t.taskId
+    let whyOrdered
+    if (isLongest && t.shiftPeriod === 'morning') {
+      whyOrdered = 'Heaviest morning job, scheduled while you are freshest'
+    } else if (isLongest) {
+      whyOrdered = `Heaviest job in the ${t.shiftPeriod} block`
+    } else {
+      whyOrdered = `Fits the ${t.shiftPeriod} window`
+    }
+    return { ...t, order: i + 1, whyOrdered }
+  })
 }
 
 router.get('/today', requireAuth, async (req, res) => {

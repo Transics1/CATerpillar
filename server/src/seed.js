@@ -6,7 +6,7 @@
  * Safe to re-run: it drops the collections it owns first. Telemetry is a time-series
  * collection, which cannot be partially updated, so a full reload is the only option anyway.
  */
-import 'dotenv/config'
+import './env.js'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
