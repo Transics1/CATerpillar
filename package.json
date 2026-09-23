@@ -1,0 +1,22 @@
+{
+  "name": "cat-copilot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CAT Copilot - Smart Operator Assistant for CAT machinery",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently -n client,server -c cyan,yellow \"npm:dev:client\" \"npm:dev:server\"",
+    "dev:client": "npm run dev --workspace client",
+    "dev:server": "npm run dev --workspace server",
+    "generate": "python data/generate.py",
+    "seed": "node data/seed.js",
+    "ml:train": "python ml/train.py",
+    "ml:serve": "python -m uvicorn ml.app:app --reload --port 8000"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

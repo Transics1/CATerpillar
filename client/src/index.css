@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-cat-dark text-white font-sans antialiased;
+    overscroll-behavior-y: none;
+  }
+}
+
+@layer components {
+  /* Every interactive element uses this. Sized for gloved hands in a vibrating cab. */
+  .btn-touch {
+    @apply min-h-touch px-6 rounded-xl font-semibold text-lg
+           flex items-center justify-center gap-2 active:scale-[0.98] transition-transform;
+  }
+  .btn-primary {
+    @apply btn-touch bg-cat-yellow text-black;
+  }
+  .btn-ghost {
+    @apply btn-touch bg-cat-panel text-white border border-cat-border;
+  }
+  .panel {
+    @apply bg-cat-panel border border-cat-border rounded-2xl p-4;
+  }
+  .label-muted {
+    @apply text-cat-muted text-xs font-medium uppercase tracking-wide;
+  }
+}
