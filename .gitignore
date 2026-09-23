@@ -19,3 +19,5 @@ ml/models/*.joblib
 Thumbs.db
 .vscode/
 .idea/
+
+dev-dist/
