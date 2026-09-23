@@ -4,6 +4,8 @@ import cors from 'cors'
 import { createServer } from 'http'
 import { Server as SocketServer } from 'socket.io'
 import { connectDB } from './db.js'
+import authRoutes from './routes/auth.js'
+import taskRoutes from './routes/tasks.js'
 
 const app = express()
 const httpServer = createServer(app)
@@ -13,6 +15,8 @@ app.use(cors())
 app.use(express.json({ limit: '10mb' })) // walkaround photos arrive as base64
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }))
+app.use('/api/auth', authRoutes)
+app.use('/api/tasks', taskRoutes)
 
 io.on('connection', (socket) => {
   socket.on('subscribe:machine', ({ machineId }) => socket.join(`machine:${machineId}`))

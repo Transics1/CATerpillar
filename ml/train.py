@@ -20,13 +20,20 @@ import json
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import HistGradientBoostingRegressor
+from sklearn.ensemble import HistGradientBoostingRegressor, IsolationForest
 from sklearn.metrics import mean_absolute_error
 from sklearn.model_selection import train_test_split
 
 HERE = os.path.dirname(__file__)
 DATA = os.path.join(HERE, "..", "data", "out", "tasks.csv")
+TELEMETRY = os.path.join(HERE, "..", "data", "out", "telemetry.csv")
 MODEL_DIR = os.path.join(HERE, "models")
+
+# Window features the anomaly model scores. Must match the server's windowing logic.
+WINDOW_FEATURES = [
+    "idleRatio", "vibrationEvents", "fuelPerCycle", "maxEngineTemp",
+    "seatbeltViolations", "minPersonnelM", "maxSwingRate", "cycleTimeStd",
+]
 
 CATEGORICAL = ["taskType", "weather", "operatorSkill", "terrainType", "shiftPeriod"]
 NUMERIC = ["machineAgeYrs", "targetVolumeM3", "terrainSlope", "ambientTempC"]
@@ -43,6 +50,51 @@ def encode(df, categories):
     for col in NUMERIC:
         out[col] = pd.to_numeric(out[col], errors="coerce")
     return out
+
+
+def build_windows(t):
+    """Aggregate raw telemetry into 30-min windows. Mirrors the server's anomaly engine."""
+    t = t.copy()
+    t["timestamp"] = pd.to_datetime(t["timestamp"])
+    t["win"] = t["timestamp"].dt.floor("30min")
+    g = t.groupby(["machineId", "operatorId", "win"])
+    w = g.agg(
+        idle_ticks=("idlingTimeMin", lambda s: (s > 0).sum()),
+        ticks=("idlingTimeMin", "size"),
+        vibrationEvents=("vibrationEvents", "sum"),
+        fuel=("fuelUsedL", "sum"),
+        cycles=("loadCycles", "sum"),
+        maxEngineTemp=("engineTempC", "max"),
+        seatbeltViolations=("seatbeltStatus", lambda s: (s == "Unfastened").sum()),
+        minPersonnelM=("nearestPersonnelM", "min"),
+        maxSwingRate=("swingRateDegSec", "max"),
+        cycleTimeStd=("cycleTimeStdRolling", "mean"),
+    ).reset_index()
+    w["idleRatio"] = w.idle_ticks / w.ticks
+    w["fuelPerCycle"] = (w.fuel / w.cycles.replace(0, np.nan)).fillna(w.fuel)
+    return w
+
+
+def train_anomaly_model():
+    """
+    IsolationForest over window aggregates. This is the second tier of the hybrid engine -
+    the explicit rules in BUILD_SPEC.md catch the known failure modes and explain themselves;
+    this catches combinations nobody wrote a rule for.
+    """
+    print("\ntraining anomaly model ...")
+    t = pd.read_csv(TELEMETRY)
+    w = build_windows(t)
+    X = w[WINDOW_FEATURES].fillna(0)
+
+    iso = IsolationForest(n_estimators=200, contamination=0.08, random_state=42)
+    iso.fit(X)
+    joblib.dump({"model": iso, "features": WINDOW_FEATURES,
+                 "medians": X.median().to_dict()},
+                os.path.join(MODEL_DIR, "anomaly.joblib"))
+
+    flagged = (iso.predict(X) == -1)
+    print(f"  windows           {len(w):,}")
+    print(f"  flagged anomalous {flagged.sum():,}  ({flagged.mean():.1%})")
 
 
 def main():
@@ -122,6 +174,8 @@ def main():
     print(json.dumps({"mae": round(mae, 2), "coverageRaw": round(cov_raw, 1),
                       "coverageConformal": round(cov_cqr, 1), "qAdjust": round(q_adjust, 2),
                       "baselineMae": round(baseline_mae, 2)}))
+
+    train_anomaly_model()
 
 
 if __name__ == "__main__":
