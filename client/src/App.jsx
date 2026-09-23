@@ -34,7 +34,7 @@ export default function App() {
           <Route path="/safety" element={<Safety />} />
           <Route path="/learn" element={<Learn />} />
           <Route path="/me" element={<Me />} />
-          <Route path="/report/:shiftId" element={<Report />} />
+          <Route path="/report" element={<Report />} />
         </Routes>
       </main>
       <BottomNav />

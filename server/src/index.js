@@ -1,4 +1,4 @@
-import './env.js'
+﻿import './env.js'
 import express from 'express'
 import cors from 'cors'
 import { createServer } from 'http'
@@ -8,6 +8,8 @@ import authRoutes from './routes/auth.js'
 import taskRoutes from './routes/tasks.js'
 import adminRoutes from './routes/admin.js'
 import lessonRoutes from './routes/lessons.js'
+import shiftRoutes from './routes/shift.js'
+import incidentRoutes from './routes/incidents.js'
 
 const app = express()
 const httpServer = createServer(app)
@@ -21,6 +23,8 @@ app.use('/api/auth', authRoutes)
 app.use('/api/tasks', taskRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/lessons', lessonRoutes)
+app.use('/api/shift', shiftRoutes)
+app.use('/api/incidents', incidentRoutes)
 
 io.on('connection', (socket) => {
   socket.on('subscribe:machine', ({ machineId }) => socket.join(`machine:${machineId}`))

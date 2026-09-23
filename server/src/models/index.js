@@ -127,7 +127,14 @@ const taskSchema = new Schema({
   interruptions: Number,
   status: { type: String, default: 'pending' },   // pending | active | done
   startedAt: Date,
-  completedAt: Date
+  completedAt: Date,
+
+  // Captured from the live session on completion so the end-of-shift report can be built
+  // without replaying telemetry.
+  idleMin: Number,
+  idleCostInr: Number,
+  idleCo2Kg: Number,
+  cyclesDone: Number
 })
 
 // --------------------------------------------------------------------------- Incident

@@ -123,7 +123,11 @@ router.post('/:taskId/complete', requireAuth, async (req, res) => {
     {
       status: 'done',
       completedAt: new Date(),
-      actualTimeMin: req.body.actualTimeMin ?? final?.elapsedMin
+      actualTimeMin: req.body.actualTimeMin ?? final?.elapsedMin,
+      idleMin: final?.idleMin ?? 0,
+      idleCostInr: final?.idleCostInr ?? 0,
+      idleCo2Kg: final?.idleCo2Kg ?? 0,
+      cyclesDone: final?.cyclesDone ?? 0
     },
     { new: true }
   ).lean()

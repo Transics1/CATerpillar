@@ -47,7 +47,17 @@ export const api = {
   startTask: (taskId) => request(`/tasks/${taskId}/start`, { method: 'POST' }),
   pace: (taskId) => request(`/tasks/${taskId}/pace`),
   completeTask: (taskId) => request(`/tasks/${taskId}/complete`, { method: 'POST', body: '{}' }),
+  me: () => request('/auth/me'),
   lessons: () => request('/lessons'),
+  startShift: () => request('/shift/start', { method: 'POST', body: '{}' }),
+  submitChecklist: (shiftId, items, seatbeltConfirmed) =>
+    request('/shift/checklist', {
+      method: 'POST',
+      body: JSON.stringify({ shiftId, items, seatbeltConfirmed })
+    }),
+  shiftReport: () => request('/shift/report'),
+  incidents: () => request('/incidents'),
+  alerts: () => request('/incidents/alerts'),
   completeLesson: (lessonId, quizScore) =>
     request(`/lessons/${lessonId}/complete`, { method: 'POST', body: JSON.stringify({ quizScore }) }),
 
