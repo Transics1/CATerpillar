@@ -370,7 +370,6 @@ def main():
         [{"lessonId": l, "title": t, "forAnomalyType": a, "durationSec": d} for l, t, a, d in LESSONS]
     )
 
-    # Persist the cohort so the seeder can attach lesson-completion history.
     cohort = operators[operators["_inCohort"]][["operatorId", "_lessonDay", "_lessonId"]].copy()
     cohort.columns = ["operatorId", "lessonDayIndex", "lessonId"]
 
