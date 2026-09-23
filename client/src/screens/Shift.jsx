@@ -4,10 +4,7 @@ import { CheckCircle2, Circle, ShieldCheck, AlertTriangle, FileText } from 'luci
 import Screen from '../components/Screen.jsx'
 import { api } from '../lib/api.js'
 
-/**
- * Pre-start walkaround. Mirrors the paper inspection operators already do, and gates task
- * start: a checklist that cannot stop you is a form, not a safety control.
- */
+// Gates task start: a checklist that cannot stop you is a form, not a safety control.
 export default function Shift() {
   const [shift, setShift] = useState(null)
   const [items, setItems] = useState([])

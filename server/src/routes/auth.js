@@ -10,8 +10,7 @@ router.post('/login', async (req, res) => {
   if (!operatorId || !pin) return res.status(400).json({ error: 'operatorId and pin required' })
 
   const operator = await Operator.findOne({ operatorId })
-  // Same response for unknown operator and wrong PIN, so the endpoint cannot be used to
-  // enumerate valid operator IDs.
+  // Same response for both, so the endpoint cannot enumerate valid operator IDs.
   if (!operator || !(await bcrypt.compare(pin, operator.pinHash || ''))) {
     return res.status(401).json({ error: 'Incorrect ID or PIN' })
   }
@@ -32,7 +31,6 @@ router.get('/me', requireAuth, async (req, res) => {
   res.json({ operator })
 })
 
-// Demo convenience: the login screen lists IDs so nobody has to memorise one on stage.
 // Names and roles only - never PINs or hashes.
 router.get('/directory', async (_req, res) => {
   const operators = await Operator.find({}, 'operatorId name skillLevel language role available')

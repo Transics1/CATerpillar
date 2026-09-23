@@ -4,14 +4,8 @@ import { requireAuth } from '../middleware/auth.js'
 
 const router = Router()
 
-/**
- * Creates or replays an incident.
- *
- * Upserting on clientId is what makes the offline queue safe. The phone generates the id
- * before the report ever leaves the device, so a queue that flushes twice - a flaky
- * reconnect, a retried request, the user reopening the app mid-sync - converges on one
- * record instead of three.
- */
+// Upserting on clientId is what makes the offline queue safe: the phone generates the id
+// before the report leaves the device, so a queue that flushes twice converges on one record.
 async function upsertIncident(operatorId, body) {
   const {
     clientId,
@@ -68,7 +62,6 @@ router.get('/', requireAuth, async (req, res) => {
   res.json({ incidents })
 })
 
-/** Today's detections, so the Safety screen shows what the machine noticed too. */
 router.get('/alerts', requireAuth, async (req, res) => {
   const since = new Date()
   since.setHours(0, 0, 0, 0)
@@ -79,10 +72,7 @@ router.get('/alerts', requireAuth, async (req, res) => {
   res.json({ alerts })
 })
 
-/**
- * Flushes a queue of operations captured while offline. Each is applied independently so one
- * bad row cannot block the rest of the queue from syncing.
- */
+// Each operation applies independently so one bad row cannot block the rest of the queue.
 router.post('/sync', requireAuth, async (req, res) => {
   const { operations = [] } = req.body
   const results = []

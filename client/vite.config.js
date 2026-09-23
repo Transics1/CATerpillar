@@ -27,21 +27,17 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,png,svg}'],
         navigateFallback: '/index.html'
       },
-      // The service worker is off in dev by default, which means a refresh while offline shows
-      // a blank page - the offline demo failing in the worst possible way. Enabled so the dev
-      // server behaves like the built app.
+      // Off in dev by default, which makes an offline refresh a blank page.
       devOptions: { enabled: true, type: 'module' }
     })
   ],
   server: {
     host: true,
     port: 5173,
-    // Vite rejects Host headers it does not recognise, which 403s every tunnel URL. Allow the
-    // tunnel providers by domain suffix rather than disabling the check outright - the
-    // hostname changes on every `cloudflared tunnel` run, so pinning one is not workable.
+    // Vite 403s Host headers it does not recognise. Allow tunnel providers by suffix rather
+    // than disabling the check - the hostname changes on every run.
     allowedHosts: ['.trycloudflare.com', '.ngrok-free.app', '.loca.lt'],
-    // Proxying keeps the client and API on one origin, so the phone only ever needs a single
-    // tunnel URL and there is no CORS or mixed-content handling to get wrong on demo day.
+    // One origin for client and API: a single tunnel URL, and no CORS to get wrong.
     proxy: {
       '/api': { target: 'http://127.0.0.1:5000', changeOrigin: true },
       '/socket.io': { target: 'http://127.0.0.1:5000', ws: true }

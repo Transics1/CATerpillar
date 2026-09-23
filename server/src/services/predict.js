@@ -2,7 +2,7 @@ import axios from 'axios'
 
 const ML_URL = process.env.ML_SERVICE_URL || 'http://127.0.0.1:8000'
 
-// Baselines mirror data/generate.py so the fallback lands in the right neighbourhood.
+// Mirrors data/generate.py so the fallback lands in the right neighbourhood.
 const BASE_MIN = {
   'Earth Excavation': 60,
   Trenching: 45,
@@ -14,11 +14,8 @@ const WEATHER_MULT = { Sunny: 1.0, Cloudy: 1.02, Windy: 1.1, Rainy: 1.18 }
 const SKILL_MULT = { Beginner: 1.18, Intermediate: 1.0, Expert: 0.88 }
 const PERIOD_MULT = { morning: 1.0, afternoon: 1.05, night: 1.12 }
 
-/**
- * Heuristic used when the ML service is unreachable. Returns the exact same response shape
- * as /predict, including drivers, so the client cannot tell the difference and the demo
- * survives a Python crash. `source` is the only tell.
- */
+// Used when the ML service is unreachable. Returns the same shape as /predict, drivers
+// included, so the client cannot tell the difference. `source` is the only tell.
 function heuristic(f) {
   const base = BASE_MIN[f.taskType] ?? 45
   const volume = (f.targetVolumeM3 ?? 40) / 40

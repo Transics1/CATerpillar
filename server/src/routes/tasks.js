@@ -8,11 +8,8 @@ import { personalise } from '../services/personalisation.js'
 
 const router = Router()
 
-/**
- * Ordering heuristic: demanding work early, while alertness is highest and before the
- * afternoon heat. Explainable on purpose - the operator sees why their day is in this order,
- * which is the difference between a plan and a list.
- */
+// Demanding work early, while alertness is highest. The operator sees why their day is in
+// this order, which is the difference between a plan and a list.
 function orderTasks(tasks) {
   const periodRank = { morning: 0, afternoon: 1, night: 2 }
   const sorted = [...tasks].sort((a, b) => {
@@ -21,9 +18,8 @@ function orderTasks(tasks) {
     return (b.prediction?.p50 ?? 0) - (a.prediction?.p50 ?? 0)
   })
 
-  // Labels are derived from the actual comparison rather than from position. Sorting is
-  // period-first, so "longest job first" was false whenever an afternoon task ran longer than
-  // every morning one - the operator would see the claim contradicted by the numbers below it.
+  // Labels come from the actual comparison, not position: sorting is period-first, so a
+  // position-based label would be contradicted by the numbers beside it.
   const longestInPeriod = {}
   for (const t of sorted) {
     const cur = longestInPeriod[t.shiftPeriod]
@@ -62,8 +58,7 @@ router.get('/today', requireAuth, async (req, res) => {
         terrainSlope: t.terrainSlope,
         ambientTempC: t.ambientTempC
       })
-      // Scale by how this operator is currently performing, so a completed lesson visibly
-      // moves tomorrow's estimate.
+      // Scaled by current performance, so a completed lesson moves tomorrow's estimate.
       return { ...t, prediction: personalise(base, operator?.dnaScore) }
     })
   )
@@ -85,10 +80,8 @@ router.post('/:taskId/start', requireAuth, async (req, res) => {
   ).lean()
   if (!task) return res.status(404).json({ error: 'not found' })
 
-  // Pace is judged against the estimate the operator was actually shown on the card - the
-  // model's P50 with their personal factor applied - not the planner's naive estimatedTimeMin
-  // and not the unpersonalised prediction. Measuring against a number nobody saw makes every
-  // variance reading meaningless.
+  // Judged against the estimate shown on the card. Measuring against a number the operator
+  // never saw makes every variance reading meaningless.
   const operator = await Operator.findOne({ operatorId: task.operatorId }).lean()
   const base = await predictTaskTime({
     taskType: task.taskType,

@@ -1,10 +1,5 @@
-/**
- * Loads server/.env by absolute path.
- *
- * `import 'dotenv/config'` resolves relative to process.cwd(), which is the repo root when
- * scripts run through npm workspaces — so it silently missed server/.env. Import this module
- * first in any entrypoint.
- */
+// dotenv resolves against process.cwd(), which is the repo root under npm workspaces. Load by
+// absolute path instead, and import this first in any entrypoint.
 import path from 'path'
 import { fileURLToPath } from 'url'
 import dotenv from 'dotenv'

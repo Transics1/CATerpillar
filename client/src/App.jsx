@@ -18,8 +18,7 @@ export default function App() {
 
   if (!operator) return <Login onLoggedIn={setOperator} />
 
-  // Supervisors get their own shell. The operator bottom nav (Shift / Tasks / Safety / Learn)
-  // is meaningless for someone managing a site rather than running a machine.
+  // The operator bottom nav is meaningless for someone managing a site.
   if (operator.role === 'supervisor') return <Board />
 
   return (

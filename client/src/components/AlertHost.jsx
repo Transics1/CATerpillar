@@ -10,11 +10,8 @@ const SEVERITY = {
   low: 'border-cat-border'
 }
 
-/**
- * Global alert surface. Anomalies and the coaching that follows them have to reach the
- * operator wherever they are in the app - burying them inside a tab they would have to think
- * to open defeats the point of detecting anything.
- */
+// Alerts have to reach the operator wherever they are; burying them in a tab they would have
+// to think to open defeats the point of detecting anything.
 export default function AlertHost() {
   const [toasts, setToasts] = useState([])
   const navigate = useNavigate()

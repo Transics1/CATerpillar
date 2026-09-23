@@ -6,7 +6,7 @@ export const speechSupported = () => !!SR
 
 const LANG = { en: 'en-IN', hi: 'hi-IN' }
 
-/** One-shot dictation. Resolves with the transcript, rejects if the mic is unavailable. */
+// One-shot dictation. Rejects if the mic is unavailable.
 export function listenOnce({ lang } = {}) {
   return new Promise((resolve, reject) => {
     if (!SR) return reject(new Error('speech recognition unavailable'))
@@ -25,13 +25,8 @@ export function listenOnce({ lang } = {}) {
   })
 }
 
-/**
- * Maps a spoken phrase to one of a small set of intents.
- *
- * Deliberately local keyword matching rather than an LLM call. It costs nothing, answers
- * instantly, and - the part that matters on a jobsite - still works when the signal drops.
- * An assistant that needs the cloud is useless in the dead zone where operators actually work.
- */
+// Local keyword matching rather than an LLM call: no cost, instant, and it still works when
+// the signal drops. An assistant that needs the cloud is useless in a dead zone.
 const INTENTS = [
   { intent: 'start_task', keywords: ['start', 'begin', 'shuru'] },
   { intent: 'log_incident', keywords: ['incident', 'report', 'near miss', 'accident'] },

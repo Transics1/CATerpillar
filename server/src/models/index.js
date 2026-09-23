@@ -1,7 +1,3 @@
-/**
- * All Mongoose schemas in one file — deliberate. Two people navigating one screen during a
- * 6-hour sprint jump between models constantly; eight tiny files costs more than it saves.
- */
 import mongoose from 'mongoose'
 
 const { Schema, model } = mongoose
@@ -25,7 +21,6 @@ const operatorSchema = new Schema({
   role: { type: String, default: 'operator', index: true },  // operator | supervisor
   pinHash: String,                             // bcrypt; PINs are never stored in plaintext
 
-  // Availability drives the supervisor's reassignment flow.
   available: { type: Boolean, default: true },
   unavailability: { reason: String, since: Date, note: String },
 
@@ -50,8 +45,7 @@ const machineSchema = new Schema({
 })
 
 // --------------------------------------------------------------------------- Telemetry
-// MongoDB time-series collection: append-only, compressed, and the "industry grade" answer
-// when a judge asks how this scales. Note: no unique indexes and no in-place updates.
+// Time-series collection: append-only and compressed. No unique indexes, no in-place updates.
 
 const telemetrySchema = new Schema(
   {
@@ -138,8 +132,8 @@ const taskSchema = new Schema({
 })
 
 // --------------------------------------------------------------------------- Incident
-// clientId is generated on the PHONE and uniquely indexed. This is what makes the offline
-// queue replay idempotent — without it, one reconnect duplicates every queued incident.
+// clientId is generated on the device and uniquely indexed: without it, one reconnect
+// duplicates every queued incident.
 
 const incidentSchema = new Schema({
   clientId: { type: String, required: true, unique: true, index: true },

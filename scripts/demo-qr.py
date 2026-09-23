@@ -12,7 +12,6 @@ import sys
 
 import qrcode
 
-
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
@@ -28,7 +27,6 @@ def main():
     print(f"  {url}\n")
     print("  operators  PIN 1234")
     print("  supervisor SUP001 / PIN 9999\n")
-
 
 if __name__ == "__main__":
     main()

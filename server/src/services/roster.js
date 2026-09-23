@@ -8,10 +8,8 @@ const startOfToday = () => {
 
 const PERIODS = ['morning', 'morning', 'afternoon', 'afternoon']
 
-/**
- * The seeded dataset is 60 days of completed history. A shift needs pending work, so historical
- * tasks are promoted into today. Idempotent - returns what already exists on a repeat call.
- */
+// The dataset is completed history; a shift needs pending work, so tasks are promoted into
+// today. Idempotent.
 export async function ensureTodaysTasks(operatorId) {
   const today = startOfToday()
   const existing = await Task.find({ operatorId, scheduledDate: { $gte: today } }).lean()
@@ -38,10 +36,7 @@ export async function ensureTodaysTasks(operatorId) {
   return created
 }
 
-/**
- * Builds today's roster for every operator. Run at seed time so the supervisor board has a
- * full day to manage rather than only the operators who happen to have logged in.
- */
+// Run at seed time so the supervisor board has a full day, not just operators who logged in.
 export async function ensureTodaysTasksForAll() {
   const operators = await Operator.find({ role: 'operator' }, 'operatorId').lean()
   let total = 0

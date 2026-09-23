@@ -6,8 +6,7 @@ import { projectLessonImpact } from '../services/impact.js'
 
 const router = Router()
 
-// A completed lesson lifts the sub-score its anomaly type maps to, not the overall figure -
-// an idling lesson should move efficiency, not safety.
+// A lesson lifts the sub-score its anomaly maps to: idling moves efficiency, not safety.
 const LESSON_AFFECTS = {
   EXCESSIVE_IDLE: 'efficiency',
   FUEL_ANOMALY: 'efficiency',
@@ -26,8 +25,7 @@ router.get('/', requireAuth, async (req, res) => {
   const completedIds = new Set((operator.completedLessons ?? []).map((c) => c.lessonId))
   const assignedIds = new Set(operator.assignedLessons ?? [])
 
-  // Attach the operator's own telemetry as the reason each lesson appeared. A generic lesson
-  // is training; a lesson that cites what you did twenty minutes ago is coaching.
+  // A generic lesson is training; one that cites what you did twenty minutes ago is coaching.
   const anomalies = await Anomaly.find({ operatorId: req.operatorId })
     .sort({ detectedAt: -1 })
     .limit(20)

@@ -11,11 +11,7 @@ const startOfToday = () => {
   return d
 }
 
-/**
- * Pre-start walkaround. This mirrors the daily inspection operators already do on paper
- * (DVIR-style) rather than inventing a checklist - the items are the ones that actually
- * ground a machine if they fail.
- */
+// Mirrors the daily paper inspection: these are the items that actually ground a machine.
 const COMMON_CHECKS = [
   'Engine oil and coolant level',
   'Visible leaks under the machine',
@@ -50,7 +46,6 @@ router.post('/start', requireAuth, async (req, res) => {
   }).lean()
   if (existing) return res.json({ shift: existing, checklist: existing.checklist })
 
-  // Default to the machine on the operator's first task today.
   let machine = machineId
   if (!machine) {
     const first = await Task.findOne({
@@ -83,8 +78,7 @@ router.post('/checklist', requireAuth, async (req, res) => {
   ).lean()
   if (!shift) return res.status(404).json({ error: 'shift not found' })
 
-  // The gate is explicit: a failed item or an unconfirmed restraint blocks task start. A
-  // checklist that cannot stop you is a form, not a safety control.
+  // A checklist that cannot stop you is a form, not a safety control.
   const failed = items.filter((i) => !i.passed).map((i) => i.item)
   const blockers = [...failed]
   if (!seatbeltConfirmed) blockers.push('Seat restraint not confirmed')
@@ -92,7 +86,6 @@ router.post('/checklist', requireAuth, async (req, res) => {
   res.json({ shift, passed: blockers.length === 0, blockers })
 })
 
-/** End-of-shift report. Where the loop closes for the operator. */
 router.get('/report', requireAuth, async (req, res) => {
   const today = startOfToday()
 
@@ -116,7 +109,6 @@ router.get('/report', requireAuth, async (req, res) => {
     detectedAt: { $gte: today }
   }).lean()
 
-  // DNA at the start of today vs now.
   const history = operator.dnaHistory ?? []
   const firstToday = history.find((h) => new Date(h.date) >= today)
   const dnaBefore = firstToday ?? history[history.length - 1] ?? operator.dnaScore
@@ -138,7 +130,6 @@ router.get('/report', requireAuth, async (req, res) => {
     lessonsCompleted: lessonDocs.map((l) => ({ lessonId: l.lessonId, title: l.title })),
     dnaBefore,
     dnaAfter,
-    // What today's coaching buys on tomorrow's work.
     tomorrowEtaShiftPct: Math.round((factorAfter / factorBefore - 1) * 1000) / 10
   })
 })

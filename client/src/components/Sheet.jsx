@@ -1,6 +1,6 @@
 import { X } from 'lucide-react'
 
-/** Bottom sheet. Actions stay in thumb reach rather than at the top of a tall screen. */
+// Actions stay in thumb reach rather than at the top of a tall screen.
 export default function Sheet({ open, title, subtitle, onClose, children }) {
   if (!open) return null
   return (

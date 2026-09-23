@@ -1,17 +1,9 @@
 import { Telemetry } from '../models/index.js'
 import { IDLE_BURN_L_PER_HR, DIESEL_COST_PER_L, CO2_KG_PER_L } from './simulator.js'
 
-/**
- * Projects what a completed lesson is actually worth to this operator.
- *
- * A 90-second lesson does not make someone measurably faster, and dialling up the ETA effect
- * to make the demo look good would be a lie the numbers cannot support. What an idle-management
- * lesson genuinely changes is fuel burned while parked - so that is what we report, computed
- * from this operator's own last 30 shifts rather than an invented figure.
- *
- * The improvement rate is the one observed in the dataset for operators who completed a lesson
- * (idle down ~25%, harsh events down ~28%), so the projection is grounded in measured behaviour.
- */
+// Projects what a completed lesson is worth, in fuel rather than minutes - a short lesson does
+// not make anyone measurably faster, but it does change idle behaviour. Improvement rates are
+// the ones observed in the dataset for operators who completed a lesson.
 
 const OBSERVED_IDLE_REDUCTION = 0.25
 const OBSERVED_HARSH_REDUCTION = 0.28

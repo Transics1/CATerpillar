@@ -1,11 +1,4 @@
-"""
-ML service for CAT Copilot.
-
-Run:  python -m uvicorn ml.app:app --reload --port 8000
-
-The Node server proxies to this and falls back to a heuristic returning the identical
-response shape if this process is unreachable, so the demo survives a Python crash.
-"""
+"""ML service. Run: python -m uvicorn ml.app:app --port 8000"""
 
 import os
 
@@ -27,8 +20,7 @@ app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
 )
 
-# Loaded once at import. If a file is missing the service reports unhealthy and Node
-# transparently uses its fallback rather than serving wrong numbers.
+# Missing models leave the service unhealthy; Node falls back rather than serving wrong numbers.
 try:
     META = joblib.load(os.path.join(MODEL_DIR, "meta.joblib"))
     MODELS = {q: joblib.load(os.path.join(MODEL_DIR, f"{q}.joblib")) for q in ("p10", "p50", "p90")}
@@ -37,7 +29,6 @@ try:
 except Exception as e:  # noqa: BLE001
     print(f"[ml] models unavailable: {e}")
     META, MODELS, ANOMALY, READY = None, {}, None, False
-
 
 # ----------------------------------------------------------------------------- schemas
 
@@ -52,13 +43,11 @@ class TaskFeatures(BaseModel):
     terrainSlope: float = 5
     ambientTempC: float = 30
 
-
 class Driver(BaseModel):
     feature: str
     value: str
     deltaMin: float
     direction: str
-
 
 class Prediction(BaseModel):
     p10: float
@@ -68,7 +57,6 @@ class Prediction(BaseModel):
     drivers: List[Driver]
     narrative: str
     source: str = "model"
-
 
 class Window(BaseModel):
     idleRatio: float = 0
@@ -80,16 +68,13 @@ class Window(BaseModel):
     maxSwingRate: float = 2
     cycleTimeStd: float = 7
 
-
 class AnomalyResult(BaseModel):
     isAnomaly: bool
     score: float
     topFeatures: List[str]
 
-
 # ----------------------------------------------------------------------------- helpers
 
-# Human-readable labels; the operator never sees a camelCase field name.
 LABELS = {
     "taskType": "Task type",
     "weather": "Weather",
@@ -102,16 +87,15 @@ LABELS = {
     "ambientTempC": "Temperature",
 }
 
+# Task type is the identity of the job, not a driver of it.
 EXPLAIN_EXCLUDE = {"taskType"}
 
-# Bare numbers on a driver chip are ambiguous ("Slope 1.3" of what?).
 UNITS = {
     "machineAgeYrs": " yr",
     "targetVolumeM3": " m3",
     "terrainSlope": " deg",
     "ambientTempC": " C",
 }
-
 
 def encode_row(payload: dict) -> pd.DataFrame:
     row = {}
@@ -122,18 +106,10 @@ def encode_row(payload: dict) -> pd.DataFrame:
         row[col] = float(payload.get(col, META["baseline"][col]))
     return pd.DataFrame([row])[META["features"]]
 
-
 def compute_drivers(payload: dict, p50: float, top_n: int = 3) -> List[Driver]:
-    """
-    Baseline-delta attribution: re-predict with one feature swapped to its training baseline.
-    The change in predicted minutes is that feature's contribution.
-    """
+    """Re-predict with one feature at its training baseline; the delta is its contribution."""
     drivers = []
     for feat in META["features"]:
-        # Task type is the identity of the job, not a driver of it. Including it produced
-        # "Trenching: -99.8 min" against the modal task type, which dominates every other
-        # factor and tells the operator nothing they don't already know. Drivers should
-        # explain variation WITHIN a task type.
         if feat in EXPLAIN_EXCLUDE:
             continue
         swapped = dict(payload)
@@ -154,13 +130,7 @@ def compute_drivers(payload: dict, p50: float, top_n: int = 3) -> List[Driver]:
     drivers.sort(key=lambda d: abs(d.deltaMin), reverse=True)
     return drivers[:top_n]
 
-
 def build_narrative(drivers: List[Driver], p50: float) -> str:
-    """
-    Compact signed form rather than a sentence. Avoids subject-verb agreement problems
-    ("rain push this up" vs "rain and slope push this up") and reads faster on a task card
-    and through text-to-speech.
-    """
     if not drivers:
         return f"About {p50:.0f} min. Nothing unusual about this one."
     bits = ", ".join(
@@ -169,13 +139,11 @@ def build_narrative(drivers: List[Driver], p50: float) -> str:
     )
     return f"About {p50:.0f} min. Driven by {bits}."
 
-
 # ----------------------------------------------------------------------------- routes
 
 @app.get("/health")
 def health():
     return {"ok": READY, "models": list(MODELS.keys()), "qAdjust": META["qAdjust"] if READY else None}
-
 
 @app.post("/predict", response_model=Prediction)
 def predict(features: TaskFeatures):
@@ -183,8 +151,7 @@ def predict(features: TaskFeatures):
     X = encode_row(payload)
 
     p50 = float(MODELS["p50"].predict(X)[0])
-    # qAdjust is the conformal widening computed in train.py. Applying it is what makes the
-    # advertised 80% band actually cover 80% - without it coverage drops to ~61%.
+    # Conformal widening from train.py; without it the advertised 80% band covers ~61%.
     q = META["qAdjust"]
     p10 = float(MODELS["p10"].predict(X)[0]) - q
     p90 = float(MODELS["p90"].predict(X)[0]) + q
@@ -199,7 +166,6 @@ def predict(features: TaskFeatures):
         source="model",
     )
 
-
 @app.post("/anomaly", response_model=AnomalyResult)
 def anomaly(window: Window):
     feats = ANOMALY["features"]
@@ -207,7 +173,6 @@ def anomaly(window: Window):
     score = float(ANOMALY["model"].decision_function(row)[0])
     is_anom = bool(ANOMALY["model"].predict(row)[0] == -1)
 
-    # Which inputs are most unusual relative to the training medians?
     med = ANOMALY["medians"]
     devs = sorted(
         ((f, abs(getattr(window, f) - med[f]) / (abs(med[f]) + 1e-6)) for f in feats),

@@ -5,7 +5,6 @@ import App from './App.jsx'
 import { startAutoSync } from './lib/queue.js'
 import './index.css'
 
-// Flush anything captured offline as soon as we have a connection.
 startAutoSync()
 
 ReactDOM.createRoot(document.getElementById('root')).render(

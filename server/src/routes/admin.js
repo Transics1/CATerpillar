@@ -12,7 +12,6 @@ const startOfToday = () => {
   return d
 }
 
-/** Everything the supervisor needs for the day in one payload. */
 router.get('/board', async (_req, res) => {
   const today = startOfToday()
 
@@ -50,8 +49,7 @@ router.get('/board', async (_req, res) => {
         loadMin: Math.round(assigned.reduce((s, t) => s + (t.estimatedTimeMin ?? 0), 0))
       }
     })
-    // Unavailable operators who still hold work float to the top - that is the supervisor's
-    // actual problem, and it should not need hunting for.
+    // Operators who are out but still hold work float to the top.
     .sort((a, b) => {
       const aUrgent = !a.available && a.tasks.length > 0
       const bUrgent = !b.available && b.tasks.length > 0
@@ -79,7 +77,7 @@ router.get('/board', async (_req, res) => {
       totalTasks: tasks.length,
       operatorsOut: operators.filter((o) => o.available === false).length,
       machinesDown: downMachines.length,
-      // Work that cannot currently be done: its operator is out or its machine is down.
+      // Work that cannot be done: operator out, or machine down.
       tasksNeedingAction:
         strandedTasks.length +
         tasks.filter(
@@ -135,7 +133,6 @@ router.post('/machines/:machineId/availability', async (req, res) => {
   res.json({ machine, affectedTasks: affected })
 })
 
-/** Ranked replacement operators and machines for one task. */
 router.get('/tasks/:taskId/candidates', async (req, res) => {
   const task = await Task.findOne({ taskId: req.params.taskId }).lean()
   if (!task) return res.status(404).json({ error: 'task not found' })

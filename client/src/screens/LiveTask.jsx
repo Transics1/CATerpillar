@@ -25,8 +25,7 @@ export default function LiveTask() {
       if (p.taskId !== taskId) return
       setPace(p)
 
-      // Announce the idle nudge once per streak. Hands are on the levers; a visual-only alert
-      // is one the operator will not see.
+      // Once per streak - hands are on the levers, so a visual-only alert goes unseen.
       if (p.idleStreakMin >= NUDGE_AFTER_MIN && !nudgedRef.current) {
         nudgedRef.current = true
         navigator.vibrate?.([200, 100, 200])

@@ -5,7 +5,7 @@ let socket
 
 export function getSocket() {
   if (socket) return socket
-  // Same origin - Vite proxies /socket.io to the API in dev, so one tunnel URL covers both.
+  // Same origin: Vite proxies /socket.io, so one tunnel URL covers both.
   socket = io({ transports: ['websocket', 'polling'] })
   socket.on('connect', () => {
     const operator = getOperator()
@@ -14,7 +14,7 @@ export function getSocket() {
   return socket
 }
 
-/** Subscribes to an event for the lifetime of a component. Returns the cleanup function. */
+// Returns the cleanup function.
 export function onEvent(event, handler) {
   const s = getSocket()
   s.on(event, handler)

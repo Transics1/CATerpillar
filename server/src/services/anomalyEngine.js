@@ -1,22 +1,13 @@
 import { Anomaly, Lesson, Operator } from '../models/index.js'
 import { scoreAnomaly } from './predict.js'
 
-/**
- * Hybrid anomaly detection over a rolling 30-minute window.
- *
- * Two tiers on purpose. The explicit rules below catch the known failure modes and can state
- * exactly why they fired, which is what turns a detection into a coachable moment. The
- * IsolationForest runs alongside to catch combinations nobody wrote a rule for. A model-only
- * engine would flag things it cannot explain, and "something looks unusual" is not something
- * an operator can act on.
- *
- * Thresholds are tuned against the generated distributions - see BUILD_SPEC.md.
- */
+// Hybrid detection over a rolling 30-minute window. Explicit rules catch known failure modes
+// and explain themselves; the model catches shapes nobody wrote a rule for. An unexplained
+// detection is not coachable. Thresholds are tuned against the generated distributions.
 
 const WINDOW_TICKS = 6 // 6 x 5 simulated minutes = 30 min
 
-// Do not re-fire the same anomaly type for this many ticks. Without it a sustained idle
-// stretch would assign the same lesson every tick and bury the operator in notifications.
+// Prevents a sustained idle stretch assigning the same lesson every tick.
 const COOLDOWN_TICKS = 12
 
 const RULES = [
@@ -76,11 +67,7 @@ function summariseWindow(rows) {
   }
 }
 
-/**
- * Evaluates the session's rolling window and, on a detection, assigns the matching lesson.
- * This is the join between "we noticed something" and "here is what to do about it" - the
- * step that makes the five required outcomes one system rather than five screens.
- */
+// Scores the rolling window and, on a detection, assigns the matching lesson.
 export async function evaluateWindow(session, io) {
   if (session.recent.length < WINDOW_TICKS) return null
 
@@ -101,7 +88,7 @@ export async function evaluateWindow(session, io) {
       source: 'rule'
     }
   } else if ((session.cooldowns.MODEL ?? -Infinity) + COOLDOWN_TICKS < session.tickIndex) {
-    // Nothing matched a rule - ask the model whether this window is unusual anyway.
+    // No rule matched - ask the model whether the window is unusual anyway.
     const ml = await scoreAnomaly({
       idleRatio: w.idleRatio,
       vibrationEvents: w.vibrationEvents,

@@ -2,10 +2,7 @@ import { Delete } from 'lucide-react'
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del']
 
-/**
- * Numeric keypad rather than a text input. A system keyboard on a phone is small, and the
- * operator may be wearing gloves in a vibrating cab - these keys are full-width thirds.
- */
+// Numeric keypad rather than a text input: a system keyboard is too small for gloved hands.
 export default function PinPad({ value, onChange, length = 4 }) {
   function press(key) {
     if (key === 'del') return onChange(value.slice(0, -1))

@@ -21,7 +21,7 @@ export default {
         sans: ['Inter', 'system-ui', 'sans-serif']
       },
       spacing: {
-        // Gloved-hand minimum touch target. Use `h-touch` on every interactive element.
+        // Gloved-hand minimum touch target.
         touch: '3.5rem'
       }
     }

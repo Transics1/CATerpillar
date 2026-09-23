@@ -10,10 +10,7 @@ function median(values) {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
 }
 
-/**
- * Aggregates raw telemetry and task history into per-operator behaviour stats.
- * One pass over the time-series collection rather than per-operator queries.
- */
+// One pass over the time-series collection rather than a query per operator.
 async function gatherStats() {
   const telemetry = await Telemetry.aggregate([
     {
@@ -62,13 +59,7 @@ async function gatherStats() {
   })
 }
 
-/**
- * Scores every operator and writes the result back.
- *
- * Weights (safety 50 / efficiency 30 / skill 20) mirror BUILD_SPEC.md. Safety carries the most
- * weight deliberately - it matches CAT's own safety-first posture and is the honest answer when
- * a judge asks why the weighting is what it is.
- */
+// Scores every operator and writes the result back. Safety is weighted heaviest (50/30/20).
 export async function recomputeAllDna() {
   const stats = await gatherStats()
   if (!stats.length) return []

@@ -1,14 +1,7 @@
-"""
-Trains the task-time estimator.
+"""Trains the task-time estimator and the anomaly model.
 
-Three quantile models (P10 / P50 / P90) give the confidence band the task cards render.
-Explanations use a baseline-delta method rather than SHAP: predict once with the real feature
-vector, then re-predict with one feature swapped to its training baseline. The difference is
-that feature's contribution in minutes. It is fast, dependency-free, and reads better to a
-non-technical audience than SHAP values.
-
-Usage:  python ml/train.py
-Output: ml/models/{p10,p50,p90}.joblib + meta.joblib
+Quantile models give the P10/P50/P90 band; a conformal step calibrates it. Explanations use
+baseline-delta rather than SHAP - faster, no extra dependency, and easier to read.
 """
 
 import os
@@ -40,7 +33,6 @@ NUMERIC = ["machineAgeYrs", "targetVolumeM3", "terrainSlope", "ambientTempC"]
 FEATURES = CATEGORICAL + NUMERIC
 TARGET = "actualTimeMin"
 
-
 def encode(df, categories):
     """Ordinal-encode categoricals using a fixed category order shared with inference."""
     out = df[FEATURES].copy()
@@ -50,7 +42,6 @@ def encode(df, categories):
     for col in NUMERIC:
         out[col] = pd.to_numeric(out[col], errors="coerce")
     return out
-
 
 def build_windows(t):
     """Aggregate raw telemetry into 30-min windows. Mirrors the server's anomaly engine."""
@@ -74,13 +65,8 @@ def build_windows(t):
     w["fuelPerCycle"] = (w.fuel / w.cycles.replace(0, np.nan)).fillna(w.fuel)
     return w
 
-
 def train_anomaly_model():
-    """
-    IsolationForest over window aggregates. This is the second tier of the hybrid engine -
-    the explicit rules in BUILD_SPEC.md catch the known failure modes and explain themselves;
-    this catches combinations nobody wrote a rule for.
-    """
+    """Second tier of the hybrid engine: catches window shapes no explicit rule covers."""
     print("\ntraining anomaly model ...")
     t = pd.read_csv(TELEMETRY)
     w = build_windows(t)
@@ -96,22 +82,19 @@ def train_anomaly_model():
     print(f"  windows           {len(w):,}")
     print(f"  flagged anomalous {flagged.sum():,}  ({flagged.mean():.1%})")
 
-
 def main():
     os.makedirs(MODEL_DIR, exist_ok=True)
     df = pd.read_csv(DATA)
     print(f"loaded {len(df):,} tasks")
 
     categories = {c: sorted(df[c].dropna().unique().tolist()) for c in CATEGORICAL}
-    # Baseline row for the delta explanation: modal category, median numeric.
     baseline = {c: df[c].mode()[0] for c in CATEGORICAL}
     baseline.update({c: float(df[c].median()) for c in NUMERIC})
 
     X = encode(df, categories)
     y = df[TARGET].astype(float)
 
-    # Three-way split. The calibration slice is held out from fitting and used only to
-    # conformalise the interval - see the CQR step below.
+    # Calibration slice is held out from fitting and used only for the conformal step.
     X_fit, X_tmp, y_fit, y_tmp = train_test_split(X, y, test_size=0.4, random_state=42)
     X_cal, X_test, y_cal, y_test = train_test_split(X_tmp, y_tmp, test_size=0.5, random_state=42)
 
@@ -132,10 +115,8 @@ def main():
         models[name] = m
         joblib.dump(m, os.path.join(MODEL_DIR, f"{name}.joblib"))
 
-    # --- Conformalised Quantile Regression -------------------------------------------------
-    # Raw quantile regression under-covers: the learned P10/P90 band held the true value only
-    # ~64% of the time, not 80%. CQR fixes this with a finite-sample guarantee - compute how
-    # far outside the band the calibration points fell, then widen by that amount.
+    # Conformalised quantile regression: raw quantile models under-cover, so measure how far
+    # outside the band the calibration points fall and widen by that amount.
     cal_lo = models["p10"].predict(X_cal)
     cal_hi = models["p90"].predict(X_cal)
     scores = np.maximum(cal_lo - y_cal.values, y_cal.values - cal_hi)
@@ -176,7 +157,6 @@ def main():
                       "baselineMae": round(baseline_mae, 2)}))
 
     train_anomaly_model()
-
 
 if __name__ == "__main__":
     main()

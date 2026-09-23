@@ -1,17 +1,9 @@
 import { openDB } from 'idb'
 import { getToken } from './api.js'
 
-/**
- * Offline write queue.
- *
- * A jobsite loses signal constantly, and an incident report that fails because the bars
- * dropped is an incident report that never gets written. Writes land in IndexedDB first and
- * sync when the connection returns.
- *
- * Every queued item carries a clientId generated here, on the device. The server upserts on
- * it, so a queue that flushes twice - flaky reconnect, retried request, app reopened
- * mid-sync - converges on one record rather than duplicating.
- */
+// Offline write queue. Writes land in IndexedDB first and sync when the connection returns.
+// Every item carries a clientId generated on the device; the server upserts on it, so a queue
+// that flushes twice converges on one record.
 
 const DB_NAME = 'cat-copilot'
 const STORE = 'outbox'
@@ -55,7 +47,7 @@ export async function enqueue(kind, payload) {
   item.payload.clientId = item.clientId
   await (await db()).put(STORE, item)
   await notify()
-  // Try immediately - if we are actually online this behaves like a normal write.
+  // If we are online this behaves like a normal write.
   flush().catch(() => {})
   return item
 }
@@ -77,8 +69,7 @@ export async function flush() {
   if (!res.ok) throw new Error('sync failed')
 
   const { results = [] } = await res.json()
-  // Only clear rows the server confirmed. A failed row stays queued for the next attempt
-  // rather than being silently dropped.
+  // Only clear confirmed rows; a failure stays queued rather than being dropped.
   for (const r of results) {
     if (r.ok && r.clientId) await d.delete(STORE, r.clientId)
   }

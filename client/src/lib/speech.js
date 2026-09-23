@@ -2,13 +2,8 @@ import { getOperator } from './api.js'
 
 const LANG = { en: 'en-IN', hi: 'hi-IN' }
 
-/**
- * Speaks an alert aloud. The operator's hands are on the levers and their eyes are on the
- * site, so anything urgent has to be audible rather than only visible.
- *
- * Guarded throughout: speechSynthesis is missing or silently blocked in some browsers, and a
- * failed alert must never take the screen down with it.
- */
+// Hands are on the levers, so anything urgent has to be audible, not just visible.
+// Guarded throughout - speechSynthesis is missing or blocked in some browsers.
 export function speak(text, { lang } = {}) {
   try {
     if (!('speechSynthesis' in window) || !text) return
@@ -16,7 +11,7 @@ export function speak(text, { lang } = {}) {
     utterance.lang = lang || LANG[getOperator()?.language] || 'en-IN'
     utterance.rate = 1.0
     utterance.volume = 1.0
-    window.speechSynthesis.cancel() // never queue stale alerts behind a new one
+    window.speechSynthesis.cancel() // never queue a stale alert behind a new one
     window.speechSynthesis.speak(utterance)
   } catch {
     /* audio unavailable - the visual alert still stands */

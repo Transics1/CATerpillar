@@ -24,10 +24,7 @@ export default function Tasks() {
     navigate(`/tasks/${task.taskId}/live`)
   }
 
-  /**
-   * Hands-free start. The operator names a task type ("start trenching") and we match it
-   * against today's plan - so the command works without them knowing a task ID.
-   */
+  // Matches a spoken task type against today's plan, so no task ID is needed.
   async function voiceCommand() {
     setListening(true)
     setHeard(null)

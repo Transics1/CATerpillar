@@ -1,8 +1,4 @@
-/**
- * Renders the conformal P10-P90 interval as a range bar with the P50 marked.
- * The band is the point of the feature — a bare number hides that the model knows how
- * uncertain it is — so it gets its own visual rather than being parenthetical text.
- */
+// The band gets its own visual: a bare number hides how certain the model actually is.
 export default function EtaBand({ p10, p50, p90 }) {
   const span = Math.max(p90 - p10, 1)
   const markerPct = ((p50 - p10) / span) * 100

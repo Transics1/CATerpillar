@@ -70,8 +70,7 @@ export default function Safety() {
       rawText: form.rawText,
       occurredAt: new Date().toISOString()
     }
-    // Always through the queue, online or not. One path means the offline case is the tested
-    // path rather than a rarely-exercised fallback.
+    // Always through the queue, so the offline path is the tested one.
     await enqueue('incident', payload)
     setOpen(false)
     setForm({ type: TYPES[0], severity: 'medium', rawText: '' })

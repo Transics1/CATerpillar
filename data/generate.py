@@ -1,17 +1,12 @@
-"""
-Synthetic dataset generator for CAT Copilot.
+"""Synthetic dataset generator.
 
-Supersets the two sample tables from the problem statement with the extra parameters our
-features need (location, machine health, operation quality, environment, BLE proximity,
-fatigue inputs).
+Extends the two sample tables from the brief with location, machine health, operation quality,
+environment, proximity and fatigue parameters.
 
-The one thing in here that is NOT decoration: the `improvement cohort`. A subset of operators
-get a lesson-completion date, and after that date their idle ratio, harsh-event rate and
-cycle-time variance measurably improve. Without it the coaching loop can only be asserted in
-the pitch; with it, the report card renders a real before/after curve.
+A subset of operators improve measurably after a lesson-completion date, which is what makes
+the coaching loop demonstrable rather than merely asserted.
 
 Usage:  python data/generate.py
-Output: data/out/{operators,machines,telemetry,tasks,lessons}.csv
 """
 
 import os
@@ -64,8 +59,7 @@ TASK_TYPES = {
     "Demolition": (90, "DOZ"),
 }
 
-# Zones follow the work, not chance. Randomising this produced cards reading
-# "Earth Excavation - Zone-D-Demolition", which anyone who knows a jobsite would flag.
+# Zones follow the work rather than being assigned at random.
 TASK_ZONE = {
     "Earth Excavation": "Zone-A-Excavation",
     "Trenching": "Zone-A-Excavation",
@@ -98,12 +92,10 @@ LAST_NAMES = [
     "Kumar", "Sharma", "Reddy", "Nair", "Patil", "Singh", "Das", "Rao", "Verma", "Yadav",
 ]
 
-
 # ----------------------------------------------------------------------------- helpers
 
 def clamp(v, lo, hi):
     return max(lo, min(hi, v))
-
 
 def make_operators():
     rows = []
@@ -127,8 +119,7 @@ def make_operators():
                 # behavioural profile - drives telemetry generation, not persisted to the app
                 "_idleBase": SKILL_IDLE_BASE[skill] + np.random.normal(0, 0.03),
                 "_harshBase": SKILL_HARSH_BASE[skill] + np.random.normal(0, 0.6),
-                # Tuned so ~7% of 30-min windows contain a violation. beta(2,18) put it at 33%,
-                # which made the safety sub-score meaningless because nearly everyone was in breach.
+                # Tuned so ~7% of 30-min windows contain a violation.
                 "_seatbeltViolationP": clamp(np.random.beta(1.5, 100), 0.002, 0.12),
                 "_fuelFactor": clamp(np.random.normal(1.0, 0.09), 0.8, 1.35),
                 "_inCohort": in_cohort,
@@ -138,19 +129,17 @@ def make_operators():
         )
     return pd.DataFrame(rows)
 
-
 def improvement_factor(op_row, day_index):
     """Returns multipliers (idle, harsh, variance) for this operator on this day."""
     if not op_row["_inCohort"] or day_index < op_row["_lessonDay"]:
         return 1.0, 1.0, 1.0
-    # Ramp the improvement in over ~7 days so the curve looks like learning, not a step function.
+    # Ramped over ~7 days so the curve reads as learning rather than a step change.
     ramp = clamp((day_index - op_row["_lessonDay"]) / 7.0, 0.0, 1.0)
     return (
         1.0 - 0.28 * ramp,   # idle ratio down up to 28%
         1.0 - 0.32 * ramp,   # harsh events down up to 32%
         1.0 - 0.22 * ramp,   # cycle-time variance tightens
     )
-
 
 def make_machines():
     return pd.DataFrame(
@@ -168,7 +157,6 @@ def make_machines():
         ]
     )
 
-
 def make_day_weather(day_index):
     w = random.choices(WEATHERS, weights=WEATHER_P)[0]
     base_temp = {"Sunny": 33, "Cloudy": 29, "Rainy": 26, "Windy": 28}[w]
@@ -178,7 +166,6 @@ def make_day_weather(day_index):
         "humidityPct": round(clamp(np.random.normal(60 if w != "Rainy" else 85, 10), 20, 99), 1),
         "windKph": round(clamp(np.random.normal(25 if w == "Windy" else 9, 5), 0, 60), 1),
     }
-
 
 # ----------------------------------------------------------------------------- telemetry
 
@@ -238,9 +225,8 @@ def make_telemetry(operators, machines):
                     fuel = round(18.0 / 12 * op["_fuelFactor"] + np.random.normal(0, 0.12), 3)
                     payload = int(clamp(np.random.normal(2400, 420), 0, 4200))
                     swing = round(clamp(np.random.normal(2.6, 0.9), 0, 8), 2)
-                    # Scaled so a 30-min window (6 ticks) separates skill levels either side of
-                    # the HARSH_OPERATION threshold of 8 in BUILD_SPEC.md:
-                    # beginner ~15/window, expert ~4/window. Do not rescale without re-tuning that rule.
+                    # Scaled so a 30-min window separates skill levels either side of the
+                    # HARSH_OPERATION threshold. Re-tune that rule if this changes.
                     vib = int(max(0, np.random.poisson(op["_harshBase"] * harsh_mult / 2.4 * (1 + fatigue))))
 
                 cum_cycles += cycles
@@ -267,9 +253,8 @@ def make_telemetry(operators, machines):
                         "lng": round(lng + np.random.normal(0, 0.0004), 6),
                         "geofenceZone": zone,
                         "terrainSlopeDeg": round(clamp(np.random.normal(5, 3), 0, 22), 1),
-                        # Anomaly rules take the MAX over a 6-tick window, which inflates the tail.
-                        # Centred at ~86C with a tight sd so OVERHEAT (>105) stays a rare event
-                        # rather than firing in one window out of six.
+                        # Rules take the window MAX, which inflates the tail - keep sd tight so
+                        # OVERHEAT stays rare.
                         "engineTempC": round(clamp(np.random.normal(86 if not is_idle else 78, 4.5)
                                                    + weather["ambientTempC"] * 0.15, 60, 118), 1),
                         "hydraulicPressureBar": round(clamp(np.random.normal(210 if not is_idle else 60, 25), 20, 330), 1),
@@ -293,7 +278,6 @@ def make_telemetry(operators, machines):
                     }
                 )
     return pd.DataFrame(rows)
-
 
 # ----------------------------------------------------------------------------- tasks
 
@@ -368,7 +352,6 @@ def make_tasks(operators, machines):
             tid += 1
     return pd.DataFrame(rows)
 
-
 # ----------------------------------------------------------------------------- main
 
 def main():
@@ -405,7 +388,6 @@ def main():
     print(f"  tasks      {len(tasks):>7,}")
     print(f"  cohort     {len(cohort):>7,}  (operators with a visible before/after)")
     print(f"\nwritten to {OUT_DIR}")
-
 
 if __name__ == "__main__":
     main()

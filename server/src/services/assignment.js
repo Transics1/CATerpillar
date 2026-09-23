@@ -16,21 +16,14 @@ const startOfToday = () => {
   return d
 }
 
-/**
- * Ranks available operators to take over a task.
- *
- * The score is a weighted blend of four signals, and every candidate carries the reasons that
- * produced it. A supervisor reassigning work under pressure needs to see why the system is
- * recommending someone, not just a sorted list - an unexplained ranking is one they will
- * override on instinct, which defeats the point.
- */
+// Ranks available operators for a task. Every candidate carries its reasons - an unexplained
+// ranking is one a supervisor overrides on instinct.
 export async function rankCandidates(task, { limit = 5 } = {}) {
   const today = startOfToday()
 
   const operators = await Operator.find({ role: 'operator', available: true }).lean()
   const eligible = operators.filter((o) => o.operatorId !== task.operatorId)
 
-  // Current load and machine-type familiarity, in two queries rather than per candidate.
   const loads = await Task.aggregate([
     { $match: { scheduledDate: { $gte: today }, status: { $in: ['pending', 'active'] } } },
     { $group: { _id: '$operatorId', minutes: { $sum: '$estimatedTimeMin' }, count: { $sum: 1 } } }
@@ -56,10 +49,7 @@ export async function rankCandidates(task, { limit = 5 } = {}) {
     let skillFit = SKILL_FIT[o.skillLevel] ?? 0.7
     if (DEMANDING_TASKS.has(task.taskType) && o.skillLevel === 'Beginner') skillFit *= 0.6
 
-    // Certification for the machine type is close to a hard requirement in real operations -
-    // you do not put an uncertified operator on a loader. Treating it as a small bonus ranked
-    // a certified operator with 28 loader jobs BELOW an uncertified one, which is the wrong
-    // answer for a supervisor to be handed.
+    // Certification is close to a hard requirement in real operations, not a tiebreaker.
     const requiredCert = CERT_FOR_TYPE[task.machineType]
     const certified = requiredCert ? o.certifications?.includes(requiredCert) : true
     if (requiredCert) {
@@ -75,8 +65,7 @@ export async function rankCandidates(task, { limit = 5 } = {}) {
     const onType = hist?.byType?.[task.machineType] ?? 0
     const familiarity = hist?.total ? Math.min(1, onType / Math.max(1, hist.total * 0.4)) : 0
 
-    // Can they do THIS job well (skill + certification + familiarity) is weighted above their
-    // general track record. DNA says who is a good operator; the rest says who suits this task.
+    // Fit for this job outweighs the general track record.
     const score = 0.3 * skillFit + 0.25 * dnaNorm + 0.25 * loadHeadroom + 0.2 * familiarity
 
     if (requiredCert && !certified) reasons.push(`Not certified ${requiredCert}`)
@@ -105,9 +94,7 @@ export async function rankCandidates(task, { limit = 5 } = {}) {
   return scored.sort((a, b) => b.score - a.score).slice(0, limit)
 }
 
-/**
- * Machines of the same type that are up and carrying the least work today.
- */
+// Same-type machines that are up and carrying the least work today.
 export async function rankMachineAlternatives(task, { limit = 5 } = {}) {
   const today = startOfToday()
 
@@ -127,7 +114,7 @@ export async function rankMachineAlternatives(task, { limit = 5 } = {}) {
     .map((m) => {
       const assignedMin = loadBy[m.machineId]?.minutes ?? 0
       const headroom = 1 - Math.min(1, assignedMin / SHIFT_MINUTES)
-      // Newer machines score slightly better; age drives both breakdown risk and task time.
+      // Age drives both breakdown risk and task time.
       const ageScore = 1 - Math.min(1, (m.ageYears ?? 3) / 10)
       return {
         machineId: m.machineId,
