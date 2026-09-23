@@ -32,6 +32,10 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+    // Vite rejects Host headers it does not recognise, which 403s every tunnel URL. Allow the
+    // tunnel providers by domain suffix rather than disabling the check outright - the
+    // hostname changes on every `cloudflared tunnel` run, so pinning one is not workable.
+    allowedHosts: ['.trycloudflare.com', '.ngrok-free.app', '.loca.lt'],
     // Proxying keeps the client and API on one origin, so the phone only ever needs a single
     // tunnel URL and there is no CORS or mixed-content handling to get wrong on demo day.
     proxy: {
