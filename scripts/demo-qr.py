@@ -14,7 +14,6 @@ import qrcode
 
 
 def render(qr):
-    # Half-block output is compact but needs a UTF-8 terminal; Windows consoles often are not.
     try:
         sys.stdout.reconfigure(encoding="utf-8")
         qr.print_ascii(invert=True)
