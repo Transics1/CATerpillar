@@ -31,6 +31,12 @@ export default defineConfig({
   ],
   server: {
     host: true,
-    port: 5173
+    port: 5173,
+    // Proxying keeps the client and API on one origin, so the phone only ever needs a single
+    // tunnel URL and there is no CORS or mixed-content handling to get wrong on demo day.
+    proxy: {
+      '/api': { target: 'http://127.0.0.1:5000', changeOrigin: true },
+      '/socket.io': { target: 'http://127.0.0.1:5000', ws: true }
+    }
   }
 })

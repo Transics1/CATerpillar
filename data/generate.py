@@ -63,6 +63,16 @@ TASK_TYPES = {
     "Grading": (35, "GRD"),
     "Demolition": (90, "DOZ"),
 }
+
+# Zones follow the work, not chance. Randomising this produced cards reading
+# "Earth Excavation - Zone-D-Demolition", which anyone who knows a jobsite would flag.
+TASK_ZONE = {
+    "Earth Excavation": "Zone-A-Excavation",
+    "Trenching": "Zone-A-Excavation",
+    "Material Loading": "Zone-C-Stockpile",
+    "Grading": "Zone-B-Haul",
+    "Demolition": "Zone-D-Demolition",
+}
 SHIFT_PERIOD_MULT = {"morning": 1.00, "afternoon": 1.05, "night": 1.12}
 
 # Anomaly -> lesson mapping. Mirrors BUILD_SPEC.md; keep the two in sync.
@@ -338,7 +348,7 @@ def make_tasks(operators, machines):
                     "machineType": req_type,
                     "machineId": machine["machineId"],
                     "operatorId": op["operatorId"],
-                    "siteZone": random.choice(ZONES),
+                    "siteZone": TASK_ZONE[task_type],
                     "scheduledDate": date.date().isoformat(),
                     "shiftPeriod": shift_period,
                     "weather": weather["weather"],

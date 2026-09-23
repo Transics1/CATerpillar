@@ -34,8 +34,8 @@ function heuristic(f) {
   const drivers = [
     { feature: 'Weather', value: f.weather, deltaMin: plain * (weather - 1) },
     { feature: 'Your skill level', value: f.operatorSkill, deltaMin: plain * (skill - 1) },
-    { feature: 'Machine age', value: String(f.machineAgeYrs ?? 3), deltaMin: plain * (age - 1) },
-    { feature: 'Slope', value: String(f.terrainSlope ?? 5), deltaMin: plain * (slope - 1) }
+    { feature: 'Machine age', value: `${f.machineAgeYrs ?? 3} yr`, deltaMin: plain * (age - 1) },
+    { feature: 'Slope', value: `${f.terrainSlope ?? 5} deg`, deltaMin: plain * (slope - 1) }
   ]
     .filter((d) => Math.abs(d.deltaMin) >= 0.5)
     .map((d) => ({ ...d, deltaMin: Math.round(d.deltaMin * 10) / 10, direction: d.deltaMin > 0 ? 'up' : 'down' }))

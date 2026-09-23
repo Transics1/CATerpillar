@@ -1,5 +1,8 @@
+import { useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import BottomNav from './components/BottomNav.jsx'
+import Login from './screens/Login.jsx'
+import { getOperator } from './lib/api.js'
 import Shift from './screens/Shift.jsx'
 import Tasks from './screens/Tasks.jsx'
 import LiveTask from './screens/LiveTask.jsx'
@@ -10,6 +13,10 @@ import Report from './screens/Report.jsx'
 import Supervisor from './screens/Supervisor.jsx'
 
 export default function App() {
+  const [operator, setOperator] = useState(getOperator)
+
+  if (!operator) return <Login onLoggedIn={setOperator} />
+
   return (
     <div className="min-h-screen flex flex-col">
       <main className="flex-1 pb-24">

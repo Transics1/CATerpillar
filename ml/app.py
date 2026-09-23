@@ -104,6 +104,14 @@ LABELS = {
 
 EXPLAIN_EXCLUDE = {"taskType"}
 
+# Bare numbers on a driver chip are ambiguous ("Slope 1.3" of what?).
+UNITS = {
+    "machineAgeYrs": " yr",
+    "targetVolumeM3": " m3",
+    "terrainSlope": " deg",
+    "ambientTempC": " C",
+}
+
 
 def encode_row(payload: dict) -> pd.DataFrame:
     row = {}
@@ -134,7 +142,7 @@ def compute_drivers(payload: dict, p50: float, top_n: int = 3) -> List[Driver]:
         if abs(delta) < 0.5:
             continue
         raw = payload.get(feat, META["baseline"][feat])
-        value = f"{raw:g}" if isinstance(raw, (int, float)) else str(raw)
+        value = f"{raw:g}{UNITS.get(feat, '')}" if isinstance(raw, (int, float)) else str(raw)
         drivers.append(
             Driver(
                 feature=LABELS.get(feat, feat),
