@@ -1,29 +1,44 @@
 import { Router } from 'express'
+import bcrypt from 'bcryptjs'
 import { Operator } from '../models/index.js'
 import { sign, requireAuth } from '../middleware/auth.js'
 
 const router = Router()
 
-// Hackathon auth: operatorId + shared PIN. Not a credential system, and deliberately so -
-// a real deployment would federate to the site's identity provider.
 router.post('/login', async (req, res) => {
   const { operatorId, pin } = req.body
-  const operator = await Operator.findOne({ operatorId }).lean()
-  if (!operator) return res.status(404).json({ error: 'unknown operator' })
-  if (pin && pin !== '1234') return res.status(401).json({ error: 'bad pin' })
-  res.json({ token: sign(operatorId), operator })
+  if (!operatorId || !pin) return res.status(400).json({ error: 'operatorId and pin required' })
+
+  const operator = await Operator.findOne({ operatorId })
+  // Same response for unknown operator and wrong PIN, so the endpoint cannot be used to
+  // enumerate valid operator IDs.
+  if (!operator || !(await bcrypt.compare(pin, operator.pinHash || ''))) {
+    return res.status(401).json({ error: 'Incorrect ID or PIN' })
+  }
+  if (!operator.available && operator.role === 'operator') {
+    return res.status(403).json({
+      error: `You are marked ${operator.unavailability?.reason || 'unavailable'}. See your supervisor.`
+    })
+  }
+
+  const safe = operator.toObject()
+  delete safe.pinHash
+  res.json({ token: sign(operator.operatorId, operator.role), operator: safe })
 })
 
 router.get('/me', requireAuth, async (req, res) => {
-  const operator = await Operator.findOne({ operatorId: req.operatorId }).lean()
+  const operator = await Operator.findOne({ operatorId: req.operatorId }, '-pinHash').lean()
   if (!operator) return res.status(404).json({ error: 'not found' })
   res.json({ operator })
 })
 
-// Demo convenience: the login screen lists real seeded operators instead of making you
-// remember an ID.
-router.get('/operators', async (_req, res) => {
-  const operators = await Operator.find({}, 'operatorId name skillLevel language').limit(30).lean()
+// Demo convenience: the login screen lists IDs so nobody has to memorise one on stage.
+// Names and roles only - never PINs or hashes.
+router.get('/directory', async (_req, res) => {
+  const operators = await Operator.find({}, 'operatorId name skillLevel language role available')
+    .sort({ role: -1, operatorId: 1 })
+    .limit(40)
+    .lean()
   res.json({ operators })
 })
 

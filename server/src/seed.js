@@ -11,9 +11,16 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import mongoose from 'mongoose'
+import bcrypt from 'bcryptjs'
 import { parse } from 'csv-parse/sync'
 import { connectDB } from './db.js'
 import { Operator, Machine, Telemetry, Task, Lesson } from './models/index.js'
+import { recomputeAllDna } from './services/dna.js'
+
+// Demo PINs. Every operator uses 1234; the supervisor uses 9999. Hashed on the way in so the
+// database never holds a plaintext credential, even a throwaway one.
+const OPERATOR_PIN = '1234'
+const SUPERVISOR_PIN = '9999'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const OUT = path.resolve(__dirname, '../../data/out')
@@ -120,6 +127,9 @@ async function main() {
   const cohortBy = Object.fromEntries(cohort.map((c) => [c.operatorId, c]))
   const firstDay = new Date(Math.min(...telemetry.slice(0, 200).map((t) => new Date(t.timestamp))))
 
+  const operatorPinHash = await bcrypt.hash(OPERATOR_PIN, 8)
+  const supervisorPinHash = await bcrypt.hash(SUPERVISOR_PIN, 8)
+
   await Operator.insertMany(
     operators.map((o) => {
       const c = cohortBy[o.operatorId]
@@ -137,11 +147,25 @@ async function main() {
         skillLevel: o.skillLevel,
         certifications: JSON.parse(o.certifications || '[]'),
         joinDate: new Date(o.joinDate),
+        role: 'operator',
+        pinHash: operatorPinHash,
+        available: true,
         completedLessons: completed
       }
     })
   )
-  console.log(`  operators: ${operators.length}`)
+
+  await Operator.create({
+    operatorId: 'SUP001',
+    name: 'Site Supervisor',
+    language: 'en',
+    skillLevel: 'Expert',
+    role: 'supervisor',
+    pinHash: supervisorPinHash,
+    joinDate: new Date(),
+    available: true
+  })
+  console.log(`  operators: ${operators.length} (+1 supervisor)`)
 
   await Machine.insertMany(
     machines.map((m) => ({
@@ -220,6 +244,14 @@ async function main() {
     })),
     'telemetry'
   )
+
+  // DNA scores must be derived from the seeded telemetry, not defaulted - the supervisor's
+  // reassignment ranking is built on them, and a screen full of identical 70s would be obvious.
+  console.log('\ncomputing operator DNA scores ...')
+  const scored = await recomputeAllDna()
+  const overalls = scored.map((s) => s.dnaScore.overall).sort((a, b) => a - b)
+  console.log(`  scored ${scored.length} operators`)
+  console.log(`  overall range: ${overalls[0]} to ${overalls[overalls.length - 1]}`)
 
   console.log('\nseed complete.')
   await mongoose.disconnect()

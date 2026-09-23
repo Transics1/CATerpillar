@@ -22,7 +22,13 @@ const operatorSchema = new Schema({
   skillLevel: String,                          // Beginner | Intermediate | Expert
   certifications: [String],
   joinDate: Date,
-  pin: { type: String, default: '1234' },      // hackathon auth; not a real credential
+  role: { type: String, default: 'operator', index: true },  // operator | supervisor
+  pinHash: String,                             // bcrypt; PINs are never stored in plaintext
+
+  // Availability drives the supervisor's reassignment flow.
+  available: { type: Boolean, default: true },
+  unavailability: { reason: String, since: Date, note: String },
+
   dnaScore: dnaShape,
   dnaHistory: [{ date: Date, safety: Number, efficiency: Number, skill: Number, overall: Number }],
   assignedLessons: [String],
@@ -38,6 +44,8 @@ const machineSchema = new Schema({
   ageYears: Number,
   attachment: String,
   status: { type: String, default: 'idle' },   // idle | active | maintenance
+  available: { type: Boolean, default: true },
+  fault: { reason: String, since: Date, note: String },
   lastKnown: { lat: Number, lng: Number, ts: Date }
 })
 

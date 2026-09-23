@@ -39,9 +39,9 @@ async function request(path, options = {}) {
 }
 
 export const api = {
-  listOperators: () => request('/auth/operators'),
-  login: (operatorId) =>
-    request('/auth/login', { method: 'POST', body: JSON.stringify({ operatorId, pin: '1234' }) }),
+  directory: () => request('/auth/directory'),
+  login: (operatorId, pin) =>
+    request('/auth/login', { method: 'POST', body: JSON.stringify({ operatorId, pin }) }),
   todaysTasks: () => request('/tasks/today'),
   startTask: (taskId) => request(`/tasks/${taskId}/start`, { method: 'POST' })
 }
