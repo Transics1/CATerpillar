@@ -43,7 +43,10 @@ export const api = {
   login: (operatorId, pin) =>
     request('/auth/login', { method: 'POST', body: JSON.stringify({ operatorId, pin }) }),
   todaysTasks: () => request('/tasks/today'),
+  task: (taskId) => request(`/tasks/${taskId}`),
   startTask: (taskId) => request(`/tasks/${taskId}/start`, { method: 'POST' }),
+  pace: (taskId) => request(`/tasks/${taskId}/pace`),
+  completeTask: (taskId) => request(`/tasks/${taskId}/complete`, { method: 'POST', body: '{}' }),
 
   // supervisor
   board: () => request('/admin/board'),

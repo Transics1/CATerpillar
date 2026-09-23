@@ -3,6 +3,7 @@ import { Task, Operator } from '../models/index.js'
 import { requireAuth } from '../middleware/auth.js'
 import { predictTaskTime } from '../services/predict.js'
 import { ensureTodaysTasks } from '../services/roster.js'
+import { startSession, stopSession, getPace } from '../services/simulator.js'
 
 const router = Router()
 
@@ -80,18 +81,48 @@ router.post('/:taskId/start', requireAuth, async (req, res) => {
     { new: true }
   ).lean()
   if (!task) return res.status(404).json({ error: 'not found' })
-  res.json({ taskId: task.taskId, startedAt: task.startedAt })
+
+  // Pace is judged against the estimate the operator was actually shown (the model's P50),
+  // not the planner's naive estimatedTimeMin - otherwise the tracker measures against a
+  // number nobody saw.
+  const prediction = await predictTaskTime({
+    taskType: task.taskType,
+    weather: task.weather,
+    operatorSkill: task.operatorSkill,
+    terrainType: task.terrainType,
+    shiftPeriod: task.shiftPeriod,
+    machineAgeYrs: task.machineAgeYrs,
+    targetVolumeM3: task.targetVolumeM3,
+    terrainSlope: task.terrainSlope,
+    ambientTempC: task.ambientTempC
+  })
+
+  const initial = await startSession({
+    task: { ...task, predictedMin: prediction.p50 },
+    io: req.app.get('io')
+  })
+  res.json({ taskId: task.taskId, startedAt: task.startedAt, pace: initial })
+})
+
+router.get('/:taskId/pace', requireAuth, async (req, res) => {
+  const pace = getPace(req.params.taskId)
+  if (!pace) return res.status(404).json({ error: 'no active session' })
+  res.json({ pace })
 })
 
 router.post('/:taskId/complete', requireAuth, async (req, res) => {
-  const { actualTimeMin } = req.body
+  const final = stopSession(req.params.taskId)
   const task = await Task.findOneAndUpdate(
     { taskId: req.params.taskId },
-    { status: 'done', completedAt: new Date(), actualTimeMin },
+    {
+      status: 'done',
+      completedAt: new Date(),
+      actualTimeMin: req.body.actualTimeMin ?? final?.elapsedMin
+    },
     { new: true }
   ).lean()
   if (!task) return res.status(404).json({ error: 'not found' })
-  res.json({ task })
+  res.json({ task, summary: final })
 })
 
 export default router
