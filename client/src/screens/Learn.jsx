@@ -12,7 +12,7 @@ const REASON_LABEL = {
   PROXIMITY_BREACH: 'Proximity breach',
   OVERHEAT: 'Engine overheat',
   FUEL_ANOMALY: 'High fuel per cycle',
-  UNUSUAL_PATTERN: 'Unusual pattern'
+  UNUSUAL_PATTERN: 'Unusual pattern' 
 }
 
 function evidenceText(reason) {
