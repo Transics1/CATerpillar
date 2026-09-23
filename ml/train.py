@@ -1,0 +1,128 @@
+"""
+Trains the task-time estimator.
+
+Three quantile models (P10 / P50 / P90) give the confidence band the task cards render.
+Explanations use a baseline-delta method rather than SHAP: predict once with the real feature
+vector, then re-predict with one feature swapped to its training baseline. The difference is
+that feature's contribution in minutes. It is fast, dependency-free, and reads better to a
+non-technical audience than SHAP values.
+
+Usage:  python ml/train.py
+Output: ml/models/{p10,p50,p90}.joblib + meta.joblib
+"""
+
+import os
+
+os.environ.setdefault("LOKY_MAX_CPU_COUNT", "4")  # silences a noisy joblib probe on Windows
+
+import json
+
+import joblib
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import HistGradientBoostingRegressor
+from sklearn.metrics import mean_absolute_error
+from sklearn.model_selection import train_test_split
+
+HERE = os.path.dirname(__file__)
+DATA = os.path.join(HERE, "..", "data", "out", "tasks.csv")
+MODEL_DIR = os.path.join(HERE, "models")
+
+CATEGORICAL = ["taskType", "weather", "operatorSkill", "terrainType", "shiftPeriod"]
+NUMERIC = ["machineAgeYrs", "targetVolumeM3", "terrainSlope", "ambientTempC"]
+FEATURES = CATEGORICAL + NUMERIC
+TARGET = "actualTimeMin"
+
+
+def encode(df, categories):
+    """Ordinal-encode categoricals using a fixed category order shared with inference."""
+    out = df[FEATURES].copy()
+    for col in CATEGORICAL:
+        mapping = {v: i for i, v in enumerate(categories[col])}
+        out[col] = out[col].map(mapping).fillna(-1).astype(int)
+    for col in NUMERIC:
+        out[col] = pd.to_numeric(out[col], errors="coerce")
+    return out
+
+
+def main():
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    df = pd.read_csv(DATA)
+    print(f"loaded {len(df):,} tasks")
+
+    categories = {c: sorted(df[c].dropna().unique().tolist()) for c in CATEGORICAL}
+    # Baseline row for the delta explanation: modal category, median numeric.
+    baseline = {c: df[c].mode()[0] for c in CATEGORICAL}
+    baseline.update({c: float(df[c].median()) for c in NUMERIC})
+
+    X = encode(df, categories)
+    y = df[TARGET].astype(float)
+
+    # Three-way split. The calibration slice is held out from fitting and used only to
+    # conformalise the interval - see the CQR step below.
+    X_fit, X_tmp, y_fit, y_tmp = train_test_split(X, y, test_size=0.4, random_state=42)
+    X_cal, X_test, y_cal, y_test = train_test_split(X_tmp, y_tmp, test_size=0.5, random_state=42)
+
+    cat_mask = [c in CATEGORICAL for c in FEATURES]
+    models = {}
+    for name, quantile in [("p10", 0.10), ("p50", 0.50), ("p90", 0.90)]:
+        m = HistGradientBoostingRegressor(
+            loss="quantile",
+            quantile=quantile,
+            max_iter=300,
+            learning_rate=0.08,
+            max_depth=6,
+            min_samples_leaf=25,
+            categorical_features=cat_mask,
+            random_state=42,
+        )
+        m.fit(X_fit, y_fit)
+        models[name] = m
+        joblib.dump(m, os.path.join(MODEL_DIR, f"{name}.joblib"))
+
+    # --- Conformalised Quantile Regression -------------------------------------------------
+    # Raw quantile regression under-covers: the learned P10/P90 band held the true value only
+    # ~64% of the time, not 80%. CQR fixes this with a finite-sample guarantee - compute how
+    # far outside the band the calibration points fell, then widen by that amount.
+    cal_lo = models["p10"].predict(X_cal)
+    cal_hi = models["p90"].predict(X_cal)
+    scores = np.maximum(cal_lo - y_cal.values, y_cal.values - cal_hi)
+    n = len(scores)
+    alpha = 0.20  # target 80% coverage
+    level = min(1.0, np.ceil((n + 1) * (1 - alpha)) / n)
+    q_adjust = float(np.quantile(scores, level, method="higher"))
+
+    pred = models["p50"].predict(X_test)
+    mae = mean_absolute_error(y_test, pred)
+    mape = np.mean(np.abs((y_test - pred) / y_test)) * 100
+
+    lo_raw, hi_raw = models["p10"].predict(X_test), models["p90"].predict(X_test)
+    cov_raw = np.mean((y_test >= lo_raw) & (y_test <= hi_raw)) * 100
+    lo_cqr, hi_cqr = lo_raw - q_adjust, hi_raw + q_adjust
+    cov_cqr = np.mean((y_test >= lo_cqr) & (y_test <= hi_cqr)) * 100
+    width = np.mean(hi_cqr - lo_cqr)
+
+    baseline_mae = mean_absolute_error(y_test, df.loc[y_test.index, "estimatedTimeMin"])
+
+    joblib.dump(
+        {"categories": categories, "baseline": baseline, "features": FEATURES,
+         "categorical": CATEGORICAL, "numeric": NUMERIC, "qAdjust": q_adjust},
+        os.path.join(MODEL_DIR, "meta.joblib"),
+    )
+
+    print(f"\n  P50 MAE              {mae:.2f} min")
+    print(f"  P50 MAPE             {mape:.1f} %")
+    print(f"  coverage raw         {cov_raw:.1f} %   (uncalibrated - too narrow)")
+    print(f"  coverage conformal   {cov_cqr:.1f} %   (target 80)")
+    print(f"  band widened by      +/- {q_adjust:.1f} min -> mean width {width:.1f} min")
+    print(f"  planner's estimate   {baseline_mae:.2f} min MAE")
+    print(f"  improvement          {(1 - mae / baseline_mae) * 100:.1f} % better than the existing estimate")
+    print(f"\nmodels written to {MODEL_DIR}")
+
+    print(json.dumps({"mae": round(mae, 2), "coverageRaw": round(cov_raw, 1),
+                      "coverageConformal": round(cov_cqr, 1), "qAdjust": round(q_adjust, 2),
+                      "baselineMae": round(baseline_mae, 2)}))
+
+
+if __name__ == "__main__":
+    main()

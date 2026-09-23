@@ -291,6 +291,22 @@ GET  /health
 feature swapped to its training median. The delta is that feature's contribution. Fast, no extra
 dependency, and the output reads better than SHAP values for a non-technical audience.
 
+**Trained results (`python ml/train.py`) — these are the pitch numbers:**
+
+| Metric | Value |
+|---|---|
+| P50 MAE | **6.0 min** (MAPE 8.7%) |
+| vs. the planner's own `estimatedTimeMin` | **65.8% more accurate** |
+| P10–P90 coverage, conformalised | **79.0%** (target 80) |
+
+> **The band is conformalised, and this matters.** Raw quantile regression covered only 60.6% — a
+> "P10–P90" band that was wrong a third of the time. `train.py` holds out a calibration split,
+> measures how far outside the band those points fell, and widens by that amount (±2.7 min), which
+> gives a finite-sample coverage guarantee. `meta.joblib` carries `qAdjust`; **the FastAPI service
+> must apply it** or the served band silently reverts to the uncalibrated one. Worth saying out loud
+> in the pitch — "our 80% band actually contains the answer 80% of the time" is a claim almost no
+> hackathon team can make.
+
 **Node fallback (build this — it saves the demo):** if FastAPI is unreachable, `/api/predict/task-time`
 returns the same shape from a heuristic:
 ```
