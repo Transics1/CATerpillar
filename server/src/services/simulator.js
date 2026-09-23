@@ -1,4 +1,5 @@
 import { Telemetry } from '../models/index.js'
+import { evaluateWindow } from './anomalyEngine.js'
 
 /**
  * Replays seeded telemetry for a machine as a live stream while a task is running.
@@ -134,6 +135,9 @@ export async function startSession({ task, io }) {
     if (session.recent.length > 6) session.recent.shift()
 
     if (session.cyclesDone >= session.cyclesTarget) session.done = true
+
+    // Score the rolling window. Fire-and-forget so a slow model call never stalls the stream.
+    evaluateWindow(session, io).catch(() => {})
 
     const room = `operator:${session.operatorId}`
     io.to(room).emit('telemetry:tick', {

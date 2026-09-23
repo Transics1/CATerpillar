@@ -7,6 +7,7 @@ import { connectDB } from './db.js'
 import authRoutes from './routes/auth.js'
 import taskRoutes from './routes/tasks.js'
 import adminRoutes from './routes/admin.js'
+import lessonRoutes from './routes/lessons.js'
 
 const app = express()
 const httpServer = createServer(app)
@@ -19,6 +20,7 @@ app.get('/api/health', (_req, res) => res.json({ ok: true, ts: new Date().toISOS
 app.use('/api/auth', authRoutes)
 app.use('/api/tasks', taskRoutes)
 app.use('/api/admin', adminRoutes)
+app.use('/api/lessons', lessonRoutes)
 
 io.on('connection', (socket) => {
   socket.on('subscribe:machine', ({ machineId }) => socket.join(`machine:${machineId}`))

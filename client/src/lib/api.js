@@ -47,6 +47,9 @@ export const api = {
   startTask: (taskId) => request(`/tasks/${taskId}/start`, { method: 'POST' }),
   pace: (taskId) => request(`/tasks/${taskId}/pace`),
   completeTask: (taskId) => request(`/tasks/${taskId}/complete`, { method: 'POST', body: '{}' }),
+  lessons: () => request('/lessons'),
+  completeLesson: (lessonId, quizScore) =>
+    request(`/lessons/${lessonId}/complete`, { method: 'POST', body: JSON.stringify({ quizScore }) }),
 
   // supervisor
   board: () => request('/admin/board'),

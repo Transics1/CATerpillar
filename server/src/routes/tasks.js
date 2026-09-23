@@ -1,9 +1,10 @@
-import { Router } from 'express'
+﻿import { Router } from 'express'
 import { Task, Operator } from '../models/index.js'
 import { requireAuth } from '../middleware/auth.js'
 import { predictTaskTime } from '../services/predict.js'
 import { ensureTodaysTasks } from '../services/roster.js'
 import { startSession, stopSession, getPace } from '../services/simulator.js'
+import { personalise } from '../services/personalisation.js'
 
 const router = Router()
 
@@ -49,9 +50,8 @@ router.get('/today', requireAuth, async (req, res) => {
   const tasks = await ensureTodaysTasks(operatorId)
 
   const withPredictions = await Promise.all(
-    tasks.map(async (t) => ({
-      ...t,
-      prediction: await predictTaskTime({
+    tasks.map(async (t) => {
+      const base = await predictTaskTime({
         taskType: t.taskType,
         weather: t.weather,
         operatorSkill: operator?.skillLevel || t.operatorSkill,
@@ -62,7 +62,10 @@ router.get('/today', requireAuth, async (req, res) => {
         terrainSlope: t.terrainSlope,
         ambientTempC: t.ambientTempC
       })
-    }))
+      // Scale by how this operator is currently performing, so a completed lesson visibly
+      // moves tomorrow's estimate.
+      return { ...t, prediction: personalise(base, operator?.dnaScore) }
+    })
   )
 
   res.json({ tasks: orderTasks(withPredictions) })
@@ -82,10 +85,12 @@ router.post('/:taskId/start', requireAuth, async (req, res) => {
   ).lean()
   if (!task) return res.status(404).json({ error: 'not found' })
 
-  // Pace is judged against the estimate the operator was actually shown (the model's P50),
-  // not the planner's naive estimatedTimeMin - otherwise the tracker measures against a
-  // number nobody saw.
-  const prediction = await predictTaskTime({
+  // Pace is judged against the estimate the operator was actually shown on the card - the
+  // model's P50 with their personal factor applied - not the planner's naive estimatedTimeMin
+  // and not the unpersonalised prediction. Measuring against a number nobody saw makes every
+  // variance reading meaningless.
+  const operator = await Operator.findOne({ operatorId: task.operatorId }).lean()
+  const base = await predictTaskTime({
     taskType: task.taskType,
     weather: task.weather,
     operatorSkill: task.operatorSkill,
@@ -96,6 +101,7 @@ router.post('/:taskId/start', requireAuth, async (req, res) => {
     terrainSlope: task.terrainSlope,
     ambientTempC: task.ambientTempC
   })
+  const prediction = personalise(base, operator?.dnaScore)
 
   const initial = await startSession({
     task: { ...task, predictedMin: prediction.p50 },

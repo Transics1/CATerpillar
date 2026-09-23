@@ -1,6 +1,7 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import BottomNav from './components/BottomNav.jsx'
+import AlertHost from './components/AlertHost.jsx'
 import Login from './screens/Login.jsx'
 import Board from './screens/admin/Board.jsx'
 import { getOperator } from './lib/api.js'
@@ -11,7 +12,6 @@ import Safety from './screens/Safety.jsx'
 import Learn from './screens/Learn.jsx'
 import Me from './screens/Me.jsx'
 import Report from './screens/Report.jsx'
-import Supervisor from './screens/Supervisor.jsx'
 
 export default function App() {
   const [operator, setOperator] = useState(getOperator)
@@ -24,6 +24,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <AlertHost />
       <main className="flex-1 pb-24">
         <Routes>
           <Route path="/" element={<Navigate to="/tasks" replace />} />
@@ -34,7 +35,6 @@ export default function App() {
           <Route path="/learn" element={<Learn />} />
           <Route path="/me" element={<Me />} />
           <Route path="/report/:shiftId" element={<Report />} />
-          <Route path="/supervisor" element={<Supervisor />} />
         </Routes>
       </main>
       <BottomNav />
