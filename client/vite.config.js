@@ -26,7 +26,11 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg}'],
         navigateFallback: '/index.html'
-      }
+      },
+      // The service worker is off in dev by default, which means a refresh while offline shows
+      // a blank page - the offline demo failing in the worst possible way. Enabled so the dev
+      // server behaves like the built app.
+      devOptions: { enabled: true, type: 'module' }
     })
   ],
   server: {
