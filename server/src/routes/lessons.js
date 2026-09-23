@@ -6,7 +6,6 @@ import { projectLessonImpact } from '../services/impact.js'
 
 const router = Router()
 
-// A lesson lifts the sub-score its anomaly maps to: idling moves efficiency, not safety.
 const LESSON_AFFECTS = {
   EXCESSIVE_IDLE: 'efficiency',
   FUEL_ANOMALY: 'efficiency',
