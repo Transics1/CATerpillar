@@ -2,46 +2,9 @@ import { Router } from 'express'
 import { Task, Operator } from '../models/index.js'
 import { requireAuth } from '../middleware/auth.js'
 import { predictTaskTime } from '../services/predict.js'
+import { ensureTodaysTasks } from '../services/roster.js'
 
 const router = Router()
-
-const startOfToday = () => {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d
-}
-
-/**
- * The seeded dataset is 60 days of history, all completed. A shift needs pending work, so the
- * first call of the day promotes a few historical tasks into today. Idempotent: subsequent
- * calls return what already exists.
- */
-async function ensureTodaysTasks(operatorId) {
-  const today = startOfToday()
-  const existing = await Task.find({ operatorId, scheduledDate: { $gte: today } }).lean()
-  if (existing.length) return existing
-
-  const source = await Task.find({ operatorId, status: 'done' })
-    .sort({ scheduledDate: -1 })
-    .limit(4)
-    .lean()
-  if (!source.length) return []
-
-  const periods = ['morning', 'morning', 'afternoon', 'afternoon']
-  const created = source.map((t, i) => ({
-    ...t,
-    _id: undefined,
-    taskId: `TD${today.getTime().toString(36)}${i}`,
-    scheduledDate: today,
-    shiftPeriod: periods[i] ?? 'afternoon',
-    status: 'pending',
-    actualTimeMin: undefined,
-    startedAt: undefined,
-    completedAt: undefined
-  }))
-  await Task.insertMany(created)
-  return created
-}
 
 /**
  * Ordering heuristic: demanding work early, while alertness is highest and before the

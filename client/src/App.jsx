@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import BottomNav from './components/BottomNav.jsx'
 import Login from './screens/Login.jsx'
+import Board from './screens/admin/Board.jsx'
 import { getOperator } from './lib/api.js'
 import Shift from './screens/Shift.jsx'
 import Tasks from './screens/Tasks.jsx'
@@ -16,6 +17,10 @@ export default function App() {
   const [operator, setOperator] = useState(getOperator)
 
   if (!operator) return <Login onLoggedIn={setOperator} />
+
+  // Supervisors get their own shell. The operator bottom nav (Shift / Tasks / Safety / Learn)
+  // is meaningless for someone managing a site rather than running a machine.
+  if (operator.role === 'supervisor') return <Board />
 
   return (
     <div className="min-h-screen flex flex-col">

@@ -16,6 +16,7 @@ import { parse } from 'csv-parse/sync'
 import { connectDB } from './db.js'
 import { Operator, Machine, Telemetry, Task, Lesson } from './models/index.js'
 import { recomputeAllDna } from './services/dna.js'
+import { ensureTodaysTasksForAll } from './services/roster.js'
 
 // Demo PINs. Every operator uses 1234; the supervisor uses 9999. Hashed on the way in so the
 // database never holds a plaintext credential, even a throwaway one.
@@ -244,6 +245,10 @@ async function main() {
     })),
     'telemetry'
   )
+
+  console.log('\nbuilding today\'s roster ...')
+  const todays = await ensureTodaysTasksForAll()
+  console.log(`  ${todays} tasks scheduled across all operators`)
 
   // DNA scores must be derived from the seeded telemetry, not defaulted - the supervisor's
   // reassignment ranking is built on them, and a screen full of identical 70s would be obvious.

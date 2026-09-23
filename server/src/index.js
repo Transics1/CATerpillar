@@ -6,6 +6,7 @@ import { Server as SocketServer } from 'socket.io'
 import { connectDB } from './db.js'
 import authRoutes from './routes/auth.js'
 import taskRoutes from './routes/tasks.js'
+import adminRoutes from './routes/admin.js'
 
 const app = express()
 const httpServer = createServer(app)
@@ -17,6 +18,7 @@ app.use(express.json({ limit: '10mb' })) // walkaround photos arrive as base64
 app.get('/api/health', (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }))
 app.use('/api/auth', authRoutes)
 app.use('/api/tasks', taskRoutes)
+app.use('/api/admin', adminRoutes)
 
 io.on('connection', (socket) => {
   socket.on('subscribe:machine', ({ machineId }) => socket.join(`machine:${machineId}`))

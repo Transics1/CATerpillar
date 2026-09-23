@@ -43,5 +43,21 @@ export const api = {
   login: (operatorId, pin) =>
     request('/auth/login', { method: 'POST', body: JSON.stringify({ operatorId, pin }) }),
   todaysTasks: () => request('/tasks/today'),
-  startTask: (taskId) => request(`/tasks/${taskId}/start`, { method: 'POST' })
+  startTask: (taskId) => request(`/tasks/${taskId}/start`, { method: 'POST' }),
+
+  // supervisor
+  board: () => request('/admin/board'),
+  setOperatorAvailability: (operatorId, body) =>
+    request(`/admin/operators/${operatorId}/availability`, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    }),
+  setMachineAvailability: (machineId, body) =>
+    request(`/admin/machines/${machineId}/availability`, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    }),
+  candidates: (taskId) => request(`/admin/tasks/${taskId}/candidates`),
+  reassign: (taskId, body) =>
+    request(`/admin/tasks/${taskId}/reassign`, { method: 'POST', body: JSON.stringify(body) })
 }
