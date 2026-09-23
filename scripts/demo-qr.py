@@ -1,5 +1,5 @@
 """
-Prints a scannable QR for the demo URL straight into the terminal.
+Prints a scannable QR for the demo URL into the terminal.
 
 The Cloudflare quick tunnel hands out a new hostname every run, so the QR has to be generated
 at demo time rather than prepared in advance.
@@ -12,6 +12,22 @@ import sys
 
 import qrcode
 
+
+def render(qr):
+    # Half-block output is compact but needs a UTF-8 terminal; Windows consoles often are not.
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        qr.print_ascii(invert=True)
+        return
+    except Exception:
+        pass
+
+    # ASCII fallback. Two chars per module so it stays square and scannable.
+    matrix = qr.get_matrix()
+    for row in matrix:
+        print("".join("  " if cell else "##" for cell in row))
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
@@ -23,10 +39,11 @@ def main():
     qr.make(fit=True)
 
     print()
-    qr.print_ascii(invert=True)
-    print(f"  {url}\n")
+    render(qr)
+    print(f"\n  {url}\n")
     print("  operators  PIN 1234")
     print("  supervisor SUP001 / PIN 9999\n")
+
 
 if __name__ == "__main__":
     main()
